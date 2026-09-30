@@ -1,0 +1,211 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "shpt-calcimimetic",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/dtr-std-questionnaire"
+    ]
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/cqf-library",
+      "valueCanonical": "http://example.org/fhir/Library/DialysisPrepopulation|1.0.0"
+    }
+  ],
+  "url": "http://example.org/fhir/Questionnaire/shpt-calcimimetic",
+  "version": "1.0.0",
+  "name": "shpt_calcimimetic",
+  "title": "Secondary Hyperparathyroidism (Parsabiv, J0606) - Prior Authorization Documentation",
+  "status": "active",
+  "subjectType": [
+    "Patient"
+  ],
+  "date": "2026-01-01",
+  "publisher": "Example Health Plan",
+  "item": [
+    {
+      "linkId": "request",
+      "text": "Request",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "diagnosis",
+          "text": "Diagnosis",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://hl7.org/fhir/sid/icd-10-cm",
+                "code": "N25.81",
+                "display": "Secondary hyperparathyroidism of renal origin"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "drug",
+          "text": "Drug requested",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "https://bluebutton.cms.gov/resources/codesystem/hcpcs",
+                "code": "J0606",
+                "display": "Parsabiv (etelcalcetide), 0.1 mg"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "dose",
+          "text": "Dose and frequency (e.g. 5 mg IV 3 times a week at the end of dialysis)",
+          "type": "string",
+          "required": true
+        },
+        {
+          "linkId": "request-type",
+          "text": "Type of request",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "initial",
+                "display": "Initial therapy"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "continuation",
+                "display": "Continuation of therapy"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "labs",
+      "text": "Labs (within the last 30 days)",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "ipth",
+          "text": "Intact PTH (pg/mL)",
+          "type": "decimal",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".LatestPth"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "ipth-date",
+          "text": "Date of the PTH result",
+          "type": "date",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".LatestPthDate"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "calcium",
+          "text": "Corrected serum calcium (mg/dL)",
+          "type": "decimal",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".LatestCalcium"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "phosphorus",
+          "text": "Serum phosphorus (mg/dL)",
+          "type": "decimal",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".LatestPhosphorus"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "ipth-response",
+          "text": "On therapy, has PTH decreased or stayed within target?",
+          "type": "boolean",
+          "required": true,
+          "enableWhen": [
+            {
+              "question": "request-type",
+              "operator": "=",
+              "answerCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "continuation"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "clinical",
+      "text": "Clinical review",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "on-hemodialysis",
+          "text": "Is the patient on hemodialysis?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "no-cinacalcet",
+          "text": "Has oral cinacalcet (Sensipar) been stopped at least 7 days before starting (not used together)?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "vitamin-d",
+          "text": "Vitamin D analog (e.g. Zemplar) or phosphate binder already tried or in use?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "parathyroidectomy",
+          "text": "Is the patient scheduled for parathyroidectomy?",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "linkId": "attestation",
+      "text": "I attest that the information above is accurate and supported by the medical record.",
+      "type": "boolean",
+      "required": true
+    }
+  ]
+}

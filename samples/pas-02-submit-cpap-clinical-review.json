@@ -1,0 +1,408 @@
+{
+  "resourceType": "Bundle",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-pas-request-bundle"
+    ]
+  },
+  "identifier": {
+    "system": "http://example.org/provider/bundle-ids",
+    "value": "B-002"
+  },
+  "type": "collection",
+  "timestamp": "2026-09-24T10:05:00Z",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:a36c0ddf-e981-5bcd-a7a9-315604ef9a8e",
+      "resource": {
+        "resourceType": "Claim",
+        "id": "claim-1",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-claim"
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://example.org/provider/claim-ids",
+            "value": "PA-CPAP-002"
+          }
+        ],
+        "status": "active",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/claim-type",
+              "code": "professional"
+            }
+          ]
+        },
+        "use": "preauthorization",
+        "patient": {
+          "reference": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd"
+        },
+        "created": "2026-09-24T10:05:00Z",
+        "insurer": {
+          "reference": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1"
+        },
+        "provider": {
+          "reference": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c"
+        },
+        "priority": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/processpriority",
+              "code": "normal"
+            }
+          ]
+        },
+        "insurance": [
+          {
+            "sequence": 1,
+            "focal": true,
+            "coverage": {
+              "reference": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065"
+            }
+          }
+        ],
+        "item": [
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-itemTraceNumber",
+                "valueIdentifier": {
+                  "system": "http://example.org/provider/trace",
+                  "value": "PA-CPAP-002-1"
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-certificationType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1322",
+                      "code": "I"
+                    }
+                  ]
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-serviceItemRequestType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1525",
+                      "code": "HS",
+                      "display": "Health Services Review"
+                    }
+                  ]
+                }
+              }
+            ],
+            "sequence": 1,
+            "category": {
+              "coding": [
+                {
+                  "system": "https://codesystem.x12.org/005010/1365",
+                  "code": "18"
+                }
+              ]
+            },
+            "productOrService": {
+              "coding": [
+                {
+                  "system": "https://bluebutton.cms.gov/resources/codesystem/hcpcs",
+                  "code": "E0601"
+                }
+              ]
+            },
+            "quantity": {
+              "value": 1
+            },
+            "servicedDate": "2026-10-01"
+          }
+        ],
+        "supportingInfo": [
+          {
+            "sequence": 1,
+            "category": {
+              "coding": [
+                {
+                  "system": "http://hl7.org/fhir/us/davinci-pas/CodeSystem/PASTempCodes",
+                  "code": "additionalInformation"
+                }
+              ]
+            },
+            "valueReference": {
+              "reference": "urn:uuid:173a61fc-3c8a-512b-95e1-f876db83d2fb"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pat-1",
+        "identifier": [
+          {
+            "system": "http://example.org/member-ids",
+            "value": "MBR-1001"
+          }
+        ],
+        "name": [
+          {
+            "family": "Shaw",
+            "given": [
+              "Amy"
+            ]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1970-02-20"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "cov-1",
+        "status": "active",
+        "subscriberId": "MBR-1001",
+        "beneficiary": {
+          "reference": "Patient/pat-1"
+        },
+        "relationship": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+              "code": "self"
+            }
+          ]
+        },
+        "period": {
+          "start": "2026-01-01",
+          "end": "2026-12-31"
+        },
+        "payor": [
+          {
+            "identifier": {
+              "system": "http://example.org/payer-ids",
+              "value": "PAYER001"
+            },
+            "display": "Example Health Plan"
+          }
+        ],
+        "class": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                  "code": "plan"
+                }
+              ]
+            },
+            "value": "GOLD-PPO",
+            "name": "Gold PPO"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "payer-1",
+        "identifier": [
+          {
+            "system": "http://example.org/payer-ids",
+            "value": "PAYER001"
+          }
+        ],
+        "name": "Example Health Plan"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "org-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1999999992"
+          }
+        ],
+        "name": "Good Health Clinic"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:409e5292-6fab-5310-a399-c5f1b45818c5",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "prac-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1111111112"
+          }
+        ],
+        "name": [
+          {
+            "family": "Jones",
+            "given": [
+              "Pat"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:173a61fc-3c8a-512b-95e1-f876db83d2fb",
+      "resource": {
+        "resourceType": "QuestionnaireResponse",
+        "id": "qr-cpap",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/dtr-questionnaireresponse"
+          ]
+        },
+        "questionnaire": "http://example.org/fhir/Questionnaire/cpap-e0601|1.0.0",
+        "status": "completed",
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "authored": "2026-09-24T10:00:00Z",
+        "author": {
+          "reference": "Practitioner/prac-1"
+        },
+        "item": [
+          {
+            "linkId": "sleep-study",
+            "item": [
+              {
+                "linkId": "sleep-study-date",
+                "answer": [
+                  {
+                    "valueDate": "2026-08-15",
+                    "extension": [
+                      {
+                        "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                        "extension": [
+                          {
+                            "url": "source",
+                            "valueCode": "auto"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "linkId": "ahi",
+                "answer": [
+                  {
+                    "valueDecimal": 8,
+                    "extension": [
+                      {
+                        "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                        "extension": [
+                          {
+                            "url": "source",
+                            "valueCode": "auto"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "linkId": "face-to-face",
+            "answer": [
+              {
+                "valueBoolean": true,
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                    "extension": [
+                      {
+                        "url": "source",
+                        "valueCode": "auto"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "linkId": "daytime-sleepiness",
+            "answer": [
+              {
+                "valueBoolean": true,
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                    "extension": [
+                      {
+                        "url": "source",
+                        "valueCode": "override"
+                      },
+                      {
+                        "url": "author",
+                        "extension": [
+                          {
+                            "url": "practitioner",
+                            "valueReference": {
+                              "reference": "Practitioner/prac-1"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "linkId": "attestation",
+            "answer": [
+              {
+                "valueBoolean": true,
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                    "extension": [
+                      {
+                        "url": "source",
+                        "valueCode": "manual"
+                      },
+                      {
+                        "url": "author",
+                        "extension": [
+                          {
+                            "url": "practitioner",
+                            "valueReference": {
+                              "reference": "Practitioner/prac-1"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

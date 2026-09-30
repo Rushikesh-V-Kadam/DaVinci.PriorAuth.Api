@@ -1,0 +1,221 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "aki-dialysis",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/dtr-std-questionnaire"
+    ]
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/cqf-library",
+      "valueCanonical": "http://example.org/fhir/Library/DialysisPrepopulation|1.0.0"
+    }
+  ],
+  "url": "http://example.org/fhir/Questionnaire/aki-dialysis",
+  "version": "1.0.0",
+  "name": "aki_dialysis",
+  "title": "Dialysis for Acute Kidney Injury (HCPCS G0491) - Prior Authorization Documentation",
+  "status": "active",
+  "subjectType": [
+    "Patient"
+  ],
+  "date": "2026-01-01",
+  "publisher": "Example Health Plan",
+  "item": [
+    {
+      "linkId": "aki",
+      "text": "Acute kidney injury",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "aki-onset-date",
+          "text": "Date of AKI onset",
+          "type": "date",
+          "required": true
+        },
+        {
+          "linkId": "aki-cause",
+          "text": "Cause of the AKI",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "atn",
+                "display": "Acute tubular necrosis"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "sepsis",
+                "display": "Sepsis"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "contrast",
+                "display": "Contrast or drug induced"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "obstruction",
+                "display": "Urinary obstruction"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "cardiorenal",
+                "display": "Cardiorenal"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "other",
+                "display": "Other"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "aki-cause-other",
+          "text": "Describe the cause",
+          "type": "string",
+          "required": true,
+          "enableWhen": [
+            {
+              "question": "aki-cause",
+              "operator": "=",
+              "answerCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "other"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "esrd-ruled-out",
+          "text": "Patient does NOT have ESRD (dialysis is for AKI only)?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "hospital-discharge-date",
+          "text": "Hospital discharge date (if dialysis started in the hospital)",
+          "type": "date"
+        }
+      ]
+    },
+    {
+      "linkId": "kidney-function",
+      "text": "Kidney function",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "baseline-creatinine",
+          "text": "Baseline serum creatinine before the AKI (mg/dL)",
+          "type": "decimal"
+        },
+        {
+          "linkId": "creatinine",
+          "text": "Most recent serum creatinine (mg/dL)",
+          "type": "decimal",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".LatestCreatinine"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "urine-output",
+          "text": "24-hour urine output (mL)",
+          "type": "decimal"
+        }
+      ]
+    },
+    {
+      "linkId": "recovery",
+      "text": "Kidney recovery plan",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "recovery-plan",
+          "text": "Is a plan documented to assess kidney recovery during dialysis?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "reassessment-frequency",
+          "text": "How often is recovery reassessed?",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "each-treatment",
+                "display": "At each treatment"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "weekly",
+                "display": "Weekly"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "every-2-weeks",
+                "display": "Every 2 weeks"
+              }
+            }
+          ],
+          "enableWhen": [
+            {
+              "question": "recovery-plan",
+              "operator": "=",
+              "answerBoolean": true
+            }
+          ]
+        },
+        {
+          "linkId": "treatments-per-week",
+          "text": "Prescribed treatments per week",
+          "type": "integer",
+          "required": true,
+          "initial": [
+            {
+              "valueInteger": 3
+            }
+          ]
+        },
+        {
+          "linkId": "nephrology-follow-up",
+          "text": "Date of the next nephrology review",
+          "type": "date",
+          "required": true
+        }
+      ]
+    },
+    {
+      "linkId": "attestation",
+      "text": "I attest that the information above is accurate and supported by the medical record.",
+      "type": "boolean",
+      "required": true
+    }
+  ]
+}

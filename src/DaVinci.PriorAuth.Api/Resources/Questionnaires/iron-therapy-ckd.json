@@ -1,0 +1,191 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "iron-therapy-ckd",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/dtr-std-questionnaire"
+    ]
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/cqf-library",
+      "valueCanonical": "http://example.org/fhir/Library/DialysisPrepopulation|1.0.0"
+    }
+  ],
+  "url": "http://example.org/fhir/Questionnaire/iron-therapy-ckd",
+  "version": "1.0.0",
+  "name": "iron_therapy_ckd",
+  "title": "IV Iron (Venofer / iron sucrose, J1756) - Prior Authorization Documentation",
+  "status": "active",
+  "subjectType": [
+    "Patient"
+  ],
+  "date": "2026-01-01",
+  "publisher": "Example Health Plan",
+  "item": [
+    {
+      "linkId": "request",
+      "text": "Request",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "anemia-diagnosis",
+          "text": "Anemia diagnosis",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://hl7.org/fhir/sid/icd-10-cm",
+                "code": "D50.9",
+                "display": "Iron deficiency anemia, unspecified"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://hl7.org/fhir/sid/icd-10-cm",
+                "code": "D63.1",
+                "display": "Anemia in chronic kidney disease"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "iron-drug",
+          "text": "IV iron requested",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "https://bluebutton.cms.gov/resources/codesystem/hcpcs",
+                "code": "J1756",
+                "display": "Venofer (iron sucrose), 1 mg"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "https://bluebutton.cms.gov/resources/codesystem/hcpcs",
+                "code": "J2916",
+                "display": "Ferrlecit (sodium ferric gluconate), 12.5 mg"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "course-mg",
+          "text": "Total dose for this course (mg)",
+          "type": "decimal",
+          "required": true
+        },
+        {
+          "linkId": "dose",
+          "text": "Dose per treatment and number of doses",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "linkId": "labs",
+      "text": "Iron studies (within the last 30 days)",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "hemoglobin",
+          "text": "Hemoglobin (g/dL)",
+          "type": "decimal",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".LatestHemoglobin"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "ferritin",
+          "text": "Serum ferritin (ng/mL)",
+          "type": "decimal",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".LatestFerritin"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "tsat",
+          "text": "Transferrin saturation - TSAT (%)",
+          "type": "decimal",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".LatestTsat"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "clinical",
+      "text": "Clinical review",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "prior-course",
+          "text": "Has the patient had an IV iron course before?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "prior-course-date",
+          "text": "Date the last IV iron course ended",
+          "type": "date",
+          "required": true,
+          "enableWhen": [
+            {
+              "question": "prior-course",
+              "operator": "=",
+              "answerBoolean": true
+            }
+          ]
+        },
+        {
+          "linkId": "on-esa",
+          "text": "Is the patient also on an ESA (Retacrit, Aranesp, Mircera)?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "hypersensitivity",
+          "text": "History of hypersensitivity to IV iron?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "active-infection",
+          "text": "Active infection at this time?",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "linkId": "attestation",
+      "text": "I attest that the information above is accurate and supported by the medical record.",
+      "type": "boolean",
+      "required": true
+    }
+  ]
+}

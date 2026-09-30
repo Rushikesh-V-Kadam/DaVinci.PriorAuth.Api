@@ -1,0 +1,99 @@
+{
+  "resourceType": "Parameters",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-cdex/StructureDefinition/cdex-parameters-submit-attachment"
+    ]
+  },
+  "parameter": [
+    {
+      "name": "TrackingId",
+      "valueIdentifier": {
+        "system": "http://example.org/cdex/tracking-ids",
+        "value": "{{Task.identifier[tracking-id].value}}"
+      }
+    },
+    {
+      "name": "AttachTo",
+      "valueCode": "preauthorization"
+    },
+    {
+      "name": "PayerId",
+      "valueIdentifier": {
+        "system": "http://example.org/payer-ids",
+        "value": "PAYER001"
+      }
+    },
+    {
+      "name": "OrganizationId",
+      "valueIdentifier": {
+        "system": "http://hl7.org/fhir/sid/us-npi",
+        "value": "1999999992"
+      }
+    },
+    {
+      "name": "ProviderId",
+      "valueIdentifier": {
+        "system": "http://hl7.org/fhir/sid/us-npi",
+        "value": "1111111112"
+      }
+    },
+    {
+      "name": "MemberId",
+      "valueIdentifier": {
+        "system": "http://example.org/member-ids",
+        "value": "MBR-1001"
+      }
+    },
+    {
+      "name": "Attachment",
+      "part": [
+        {
+          "name": "LineItem",
+          "valueString": "1"
+        },
+        {
+          "name": "Code",
+          "valueCodeableConcept": {
+            "coding": [
+              {
+                "system": "http://loinc.org",
+                "code": "18748-4"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Content",
+          "resource": {
+            "resourceType": "DocumentReference",
+            "id": "doc-xray",
+            "status": "current",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "18748-4",
+                  "display": "Diagnostic imaging study"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "Patient/pat-1"
+            },
+            "date": "2026-09-20T09:00:00Z",
+            "content": [
+              {
+                "attachment": {
+                  "contentType": "application/pdf",
+                  "title": "Knee X-ray report",
+                  "data": "JVBERi0xLjQKJcfsj6IKMSAwIG9iago8PC9UeXBlL0NhdGFsb2c+PgplbmRvYmoKdHJhaWxlcgo8PC9Sb290IDEgMCBSPj4KJSVFT0YK"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

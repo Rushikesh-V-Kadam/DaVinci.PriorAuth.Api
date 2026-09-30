@@ -1,0 +1,104 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "knee-arthroplasty-27447",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/dtr-std-questionnaire"
+    ]
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/cqf-library",
+      "valueCanonical": "http://example.org/fhir/Library/KneePrepopulation|1.0.0"
+    }
+  ],
+  "url": "http://example.org/fhir/Questionnaire/knee-arthroplasty-27447",
+  "version": "1.0.0",
+  "name": "knee_arthroplasty_27447",
+  "title": "Total Knee Arthroplasty (27447) - Prior Authorization Documentation",
+  "status": "active",
+  "subjectType": [
+    "Patient"
+  ],
+  "date": "2026-01-01",
+  "publisher": "Example Health Plan",
+  "item": [
+    {
+      "linkId": "clinical",
+      "text": "Clinical information",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "conservative-therapy-weeks",
+          "text": "Weeks of documented conservative therapy (PT, NSAIDs, injections)",
+          "type": "integer",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"KneePrepopulation\".ConservativeTherapyWeeks"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "kl-grade",
+          "text": "Kellgren-Lawrence radiographic grade (0-4)",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "linkId": "bmi",
+          "text": "Body mass index",
+          "type": "decimal",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"KneePrepopulation\".LatestBMI"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "admin",
+      "text": "Administrative information",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "admission-type",
+          "text": "Planned setting",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "https://www.cms.gov/Medicare/Coding/place-of-service-codes/Place_of_Service_Code_Set",
+                "code": "21",
+                "display": "Inpatient Hospital"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "https://www.cms.gov/Medicare/Coding/place-of-service-codes/Place_of_Service_Code_Set",
+                "code": "22",
+                "display": "On Campus-Outpatient Hospital"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "planned-date",
+          "text": "Planned date of surgery",
+          "type": "date",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

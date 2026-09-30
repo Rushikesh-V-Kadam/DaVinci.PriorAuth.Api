@@ -1,0 +1,203 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "home-dialysis-adaptive-template",
+  "url": "http://example.org/fhir/Questionnaire/home-dialysis-adaptive",
+  "version": "1.0.0",
+  "name": "HomeDialysisAdaptiveTemplate",
+  "title": "Home Dialysis - adaptive question logic (payer internal)",
+  "status": "active",
+  "item": [
+    {
+      "linkId": "home-modality",
+      "text": "Home dialysis modality requested",
+      "type": "choice",
+      "required": true,
+      "answerOption": [
+        {
+          "valueCoding": {
+            "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+            "code": "capd",
+            "display": "Peritoneal dialysis - CAPD (manual exchanges)"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+            "code": "apd",
+            "display": "Peritoneal dialysis - APD / CCPD (cycler)"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+            "code": "home-hd",
+            "display": "Home hemodialysis (e.g. NxStage)"
+          }
+        }
+      ]
+    },
+    {
+      "linkId": "egfr",
+      "text": "Most recent eGFR (mL/min/1.73 m2)",
+      "type": "decimal",
+      "required": true,
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+          "valueExpression": {
+            "language": "text/cql",
+            "expression": "\"DialysisPrepopulation\".LatestEgfr"
+          }
+        }
+      ]
+    },
+    {
+      "linkId": "pd-catheter",
+      "text": "Is a peritoneal dialysis catheter in place?",
+      "type": "boolean",
+      "required": true,
+      "enableWhen": [
+        {
+          "question": "home-modality",
+          "operator": "=",
+          "answerCoding": {
+            "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+            "code": "capd"
+          }
+        },
+        {
+          "question": "home-modality",
+          "operator": "=",
+          "answerCoding": {
+            "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+            "code": "apd"
+          }
+        }
+      ],
+      "enableBehavior": "any"
+    },
+    {
+      "linkId": "pd-catheter-date",
+      "text": "Date the PD catheter was placed",
+      "type": "date",
+      "required": true,
+      "enableWhen": [
+        {
+          "question": "pd-catheter",
+          "operator": "=",
+          "answerBoolean": true
+        }
+      ]
+    },
+    {
+      "linkId": "abdominal-surgery",
+      "text": "History of major abdominal surgery, adhesions or hernia?",
+      "type": "boolean",
+      "enableWhen": [
+        {
+          "question": "home-modality",
+          "operator": "=",
+          "answerCoding": {
+            "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+            "code": "capd"
+          }
+        },
+        {
+          "question": "home-modality",
+          "operator": "=",
+          "answerCoding": {
+            "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+            "code": "apd"
+          }
+        }
+      ],
+      "enableBehavior": "any"
+    },
+    {
+      "linkId": "care-partner",
+      "text": "Is a trained care partner available for every home hemodialysis treatment?",
+      "type": "boolean",
+      "required": true,
+      "enableWhen": [
+        {
+          "question": "home-modality",
+          "operator": "=",
+          "answerCoding": {
+            "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+            "code": "home-hd"
+          }
+        }
+      ]
+    },
+    {
+      "linkId": "home-hd-access",
+      "text": "Vascular access for home hemodialysis",
+      "type": "choice",
+      "required": true,
+      "answerOption": [
+        {
+          "valueCoding": {
+            "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+            "code": "avf",
+            "display": "Arteriovenous fistula (AVF)"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+            "code": "avg",
+            "display": "Arteriovenous graft (AVG)"
+          }
+        },
+        {
+          "valueCoding": {
+            "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+            "code": "cvc",
+            "display": "Central venous catheter (CVC)"
+          }
+        }
+      ],
+      "enableWhen": [
+        {
+          "question": "home-modality",
+          "operator": "=",
+          "answerCoding": {
+            "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+            "code": "home-hd"
+          }
+        }
+      ]
+    },
+    {
+      "linkId": "training-completed",
+      "text": "Has the patient (and care partner) completed home dialysis training?",
+      "type": "boolean",
+      "required": true
+    },
+    {
+      "linkId": "training-sessions",
+      "text": "How many training sessions are still planned?",
+      "type": "integer",
+      "required": true,
+      "enableWhen": [
+        {
+          "question": "training-completed",
+          "operator": "=",
+          "answerBoolean": false
+        }
+      ]
+    },
+    {
+      "linkId": "home-assessment",
+      "text": "Home assessment completed (space, water, electricity, supply storage)?",
+      "type": "boolean",
+      "required": true
+    },
+    {
+      "linkId": "attestation",
+      "text": "I attest that the information above is accurate and supported by the medical record.",
+      "type": "boolean",
+      "required": true
+    }
+  ]
+}

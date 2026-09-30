@@ -1,0 +1,24 @@
+{
+  "resourceType": "ValueSet",
+  "id": "dme-delivery-method",
+  "url": "http://example.org/fhir/ValueSet/dme-delivery-method",
+  "version": "1.0.0",
+  "name": "DmeDeliveryMethod",
+  "title": "DME delivery method",
+  "status": "active",
+  "expansion": {
+    "timestamp": "2026-01-01T00:00:00Z",
+    "contains": [
+      {
+        "system": "http://example.org/fhir/CodeSystem/dme-delivery",
+        "code": "pickup",
+        "display": "Patient picks up at supplier"
+      },
+      {
+        "system": "http://example.org/fhir/CodeSystem/dme-delivery",
+        "code": "home-delivery",
+        "display": "Delivered to patient's home"
+      }
+    ]
+  }
+}

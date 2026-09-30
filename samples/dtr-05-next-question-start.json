@@ -1,0 +1,32 @@
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "in",
+      "resource": {
+        "resourceType": "QuestionnaireResponse",
+        "id": "qr-o2",
+        "contained": [
+          {
+            "resourceType": "Questionnaire",
+            "id": "home-o2-adaptive",
+            "url": "http://example.org/fhir/Questionnaire/home-o2-adaptive",
+            "version": "1.0.0",
+            "status": "active",
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-questionnaireAdaptive",
+                "valueBoolean": true
+              }
+            ]
+          }
+        ],
+        "questionnaire": "#home-o2-adaptive",
+        "status": "in-progress",
+        "subject": {
+          "reference": "Patient/pat-1"
+        }
+      }
+    }
+  ]
+}

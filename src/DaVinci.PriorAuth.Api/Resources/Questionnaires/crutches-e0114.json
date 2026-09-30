@@ -1,0 +1,39 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "crutches-e0114",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/dtr-std-questionnaire"
+    ]
+  },
+  "url": "http://example.org/fhir/Questionnaire/crutches-e0114",
+  "version": "1.0.0",
+  "name": "crutches_e0114",
+  "title": "Crutches (E0114) - Order Administrative Information",
+  "status": "active",
+  "subjectType": [
+    "Patient"
+  ],
+  "date": "2026-01-01",
+  "publisher": "Example Health Plan",
+  "item": [
+    {
+      "linkId": "delivery-method",
+      "text": "How will the patient receive the item?",
+      "type": "choice",
+      "required": true,
+      "answerValueSet": "http://example.org/fhir/ValueSet/dme-delivery-method"
+    },
+    {
+      "linkId": "supplier-npi",
+      "text": "Supplier NPI",
+      "type": "string",
+      "required": true
+    },
+    {
+      "linkId": "rental",
+      "text": "Rental (instead of purchase)?",
+      "type": "boolean"
+    }
+  ]
+}

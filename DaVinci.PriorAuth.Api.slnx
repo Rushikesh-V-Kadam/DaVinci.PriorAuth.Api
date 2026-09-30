@@ -1,0 +1,52 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="samples.http" />   
+  </Folder>
+  <Folder Name="/Solution Items/samples/">
+    <File Path="samples/cdex-01-submit-attachment-knee.json" />
+    <File Path="samples/cdex-02-submit-questionnaire-response.json" />
+    <File Path="samples/crd-01-order-sign-no-pa-no-doc.json" />
+    <File Path="samples/crd-02-order-sign-pa-and-clinical-doc.json" />
+    <File Path="samples/crd-03-order-sign-pa-no-doc.json" />
+    <File Path="samples/crd-04-order-sign-no-pa-doc-for-claim.json" />
+    <File Path="samples/crd-05-order-sign-no-pa-admin-doc.json" />
+    <File Path="samples/crd-06-order-sign-not-covered.json" />
+    <File Path="samples/crd-07-order-sign-conditional-code.json" />
+    <File Path="samples/crd-08a-order-sign-knee-no-location.json" />
+    <File Path="samples/crd-08b-order-sign-knee-inpatient.json" />
+    <File Path="samples/crd-08c-order-sign-knee-outpatient.json" />
+    <File Path="samples/crd-09-order-sign-gold-card.json" />
+    <File Path="samples/crd-10-order-sign-performpa.json" />
+    <File Path="samples/crd-11-order-sign-no-coverage.json" />
+    <File Path="samples/crd-12-order-select.json" />
+    <File Path="samples/crd-13-appointment-book.json" />
+    <File Path="samples/crd-14-order-dispatch.json" />
+    <File Path="samples/dtr-01-package-by-questionnaire.json" />
+    <File Path="samples/dtr-02-package-by-order.json" />
+    <File Path="samples/dtr-03-package-by-context.json" />
+    <File Path="samples/dtr-04-package-nothing-needed.json" />
+    <File Path="samples/dtr-05-next-question-start.json" />
+    <File Path="samples/dtr-06-next-question-after-spo2.json" />
+    <File Path="samples/pas-01-submit-cpap-approved.json" />
+    <File Path="samples/pas-02-submit-cpap-clinical-review.json" />
+    <File Path="samples/pas-03-submit-cpap-missing-questionnaire.json" />
+    <File Path="samples/pas-04-submit-mri-no-doc-approved.json" />
+    <File Path="samples/pas-05-submit-mri-partial.json" />
+    <File Path="samples/pas-06-submit-knee-needs-attachment.json" />
+    <File Path="samples/pas-07-submit-not-covered.json" />
+    <File Path="samples/pas-08-submit-no-pa-needed.json" />
+    <File Path="samples/pas-09-submit-multi-line.json" />
+    <File Path="samples/pas-10-update-cancel-line.json" />
+    <File Path="samples/pas-11-submit-invalid.json" />
+    <File Path="samples/pas-12-inquire.json" />
+    <File Path="samples/pas-13-subscription.json" />    
+  </Folder>
+  <Folder Name="/Solution Items/tools/">
+    <File Path="tools/build_guide.py" />
+    <File Path="tools/make_samples.py" />
+    <File Path="tools/run-scenarios.sh" />    
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/DaVinci.PriorAuth.Api/DaVinci.PriorAuth.Api.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,6544 @@
+### =====================================================================
+### HOW TO USE (Visual Studio 2022 or VS Code with the "REST Client" extension)
+### 1. Start the API (F5 or: dotnet run --project src/DaVinci.PriorAuth.Api)
+### 2. Open this file. Above each request there is a "Send request" link.
+### 3. Click it. The response appears on the right side.
+### The JSON bodies are included below, so this file works from any folder.
+### Run the requests IN ORDER from top to bottom.
+### =====================================================================
+
+@base = http://localhost:5080
+
+
+### ---------------- STEP 0: is the API running? ----------------
+GET {{base}}/cds-services
+
+
+### =====================================================================
+### STEP 1: CRD - the EHR asks "does this order need prior auth?"
+### Look at the response: systemActions -> extension -> "pa-needed" and "doc-needed"
+### =====================================================================
+
+### S1 Office visit -> pa-needed = no-auth (nothing else to do)
+POST {{base}}/cds-services/crd-order-sign
+Content-Type: application/json
+
+{
+  "hook": "order-sign",
+  "hookInstance": "00000000-0000-0000-0000-00000000021f",
+  "fhirServer": "https://ehr.example.org/fhir",
+  "context": {
+    "userId": "Practitioner/prac-1",
+    "patientId": "pat-1",
+    "encounterId": "enc-1",
+    "draftOrders": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "ServiceRequest",
+            "id": "sr-99213",
+            "status": "draft",
+            "intent": "order",
+            "code": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "99213",
+                  "display": "Office visit"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "Patient/pat-1"
+            },
+            "authoredOn": "2026-09-24",
+            "requester": {
+              "reference": "Practitioner/prac-1"
+            },
+            "insurance": [
+              {
+                "reference": "Coverage/cov-1"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "prefetch": {
+    "patient": {
+      "resourceType": "Patient",
+      "id": "pat-1",
+      "identifier": [
+        {
+          "system": "http://example.org/member-ids",
+          "value": "MBR-1001"
+        }
+      ],
+      "name": [
+        {
+          "family": "Shaw",
+          "given": [
+            "Amy"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1970-02-20"
+    },
+    "coverage": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Coverage",
+            "id": "cov-1",
+            "status": "active",
+            "subscriberId": "MBR-1001",
+            "beneficiary": {
+              "reference": "Patient/pat-1"
+            },
+            "relationship": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                  "code": "self"
+                }
+              ]
+            },
+            "period": {
+              "start": "2026-01-01",
+              "end": "2026-12-31"
+            },
+            "payor": [
+              {
+                "identifier": {
+                  "system": "http://example.org/payer-ids",
+                  "value": "PAYER001"
+                },
+                "display": "Example Health Plan"
+              }
+            ],
+            "class": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                      "code": "plan"
+                    }
+                  ]
+                },
+                "value": "GOLD-PPO",
+                "name": "Gold PPO"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "practitioner": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Practitioner",
+            "id": "prac-1",
+            "identifier": [
+              {
+                "system": "http://hl7.org/fhir/sid/us-npi",
+                "value": "1111111112"
+              }
+            ],
+            "name": [
+              {
+                "family": "Jones",
+                "given": [
+                  "Pat"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "extension": {
+    "davinci-crd.configuration": {
+      "coverage-info": true,
+      "max-cards": 10
+    }
+  }
+}
+
+### S2 CPAP -> pa-needed = auth-needed AND doc-needed = clinical (so: DTR, then PAS)
+### COPY the "coverage-assertion-id" value from this response (used in STEP 2c)
+POST {{base}}/cds-services/crd-order-sign
+Content-Type: application/json
+
+{
+  "hook": "order-sign",
+  "hookInstance": "00000000-0000-0000-0000-000000000243",
+  "fhirServer": "https://ehr.example.org/fhir",
+  "context": {
+    "userId": "Practitioner/prac-1",
+    "patientId": "pat-1",
+    "encounterId": "enc-1",
+    "draftOrders": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "DeviceRequest",
+            "id": "dr-e0601",
+            "status": "draft",
+            "intent": "order",
+            "codeCodeableConcept": {
+              "coding": [
+                {
+                  "system": "https://bluebutton.cms.gov/resources/codesystem/hcpcs",
+                  "code": "E0601",
+                  "display": "CPAP device"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "Patient/pat-1"
+            },
+            "authoredOn": "2026-09-24",
+            "requester": {
+              "reference": "Practitioner/prac-1"
+            },
+            "insurance": [
+              {
+                "reference": "Coverage/cov-1"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "prefetch": {
+    "patient": {
+      "resourceType": "Patient",
+      "id": "pat-1",
+      "identifier": [
+        {
+          "system": "http://example.org/member-ids",
+          "value": "MBR-1001"
+        }
+      ],
+      "name": [
+        {
+          "family": "Shaw",
+          "given": [
+            "Amy"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1970-02-20"
+    },
+    "coverage": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Coverage",
+            "id": "cov-1",
+            "status": "active",
+            "subscriberId": "MBR-1001",
+            "beneficiary": {
+              "reference": "Patient/pat-1"
+            },
+            "relationship": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                  "code": "self"
+                }
+              ]
+            },
+            "period": {
+              "start": "2026-01-01",
+              "end": "2026-12-31"
+            },
+            "payor": [
+              {
+                "identifier": {
+                  "system": "http://example.org/payer-ids",
+                  "value": "PAYER001"
+                },
+                "display": "Example Health Plan"
+              }
+            ],
+            "class": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                      "code": "plan"
+                    }
+                  ]
+                },
+                "value": "GOLD-PPO",
+                "name": "Gold PPO"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "practitioner": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Practitioner",
+            "id": "prac-1",
+            "identifier": [
+              {
+                "system": "http://hl7.org/fhir/sid/us-npi",
+                "value": "1111111112"
+              }
+            ],
+            "name": [
+              {
+                "family": "Jones",
+                "given": [
+                  "Pat"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "extension": {
+    "davinci-crd.configuration": {
+      "coverage-info": true,
+      "max-cards": 10
+    }
+  }
+}
+
+### S3 MRI -> auth-needed, no documentation (go straight to PAS)
+POST {{base}}/cds-services/crd-order-sign
+Content-Type: application/json
+
+{
+  "hook": "order-sign",
+  "hookInstance": "00000000-0000-0000-0000-000000000230",
+  "fhirServer": "https://ehr.example.org/fhir",
+  "context": {
+    "userId": "Practitioner/prac-1",
+    "patientId": "pat-1",
+    "encounterId": "enc-1",
+    "draftOrders": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "ServiceRequest",
+            "id": "sr-72148",
+            "status": "draft",
+            "intent": "order",
+            "code": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "72148",
+                  "display": "MRI lumbar spine w/o contrast"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "Patient/pat-1"
+            },
+            "authoredOn": "2026-09-24",
+            "requester": {
+              "reference": "Practitioner/prac-1"
+            },
+            "insurance": [
+              {
+                "reference": "Coverage/cov-1"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "prefetch": {
+    "patient": {
+      "resourceType": "Patient",
+      "id": "pat-1",
+      "identifier": [
+        {
+          "system": "http://example.org/member-ids",
+          "value": "MBR-1001"
+        }
+      ],
+      "name": [
+        {
+          "family": "Shaw",
+          "given": [
+            "Amy"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1970-02-20"
+    },
+    "coverage": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Coverage",
+            "id": "cov-1",
+            "status": "active",
+            "subscriberId": "MBR-1001",
+            "beneficiary": {
+              "reference": "Patient/pat-1"
+            },
+            "relationship": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                  "code": "self"
+                }
+              ]
+            },
+            "period": {
+              "start": "2026-01-01",
+              "end": "2026-12-31"
+            },
+            "payor": [
+              {
+                "identifier": {
+                  "system": "http://example.org/payer-ids",
+                  "value": "PAYER001"
+                },
+                "display": "Example Health Plan"
+              }
+            ],
+            "class": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                      "code": "plan"
+                    }
+                  ]
+                },
+                "value": "GOLD-PPO",
+                "name": "Gold PPO"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "practitioner": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Practitioner",
+            "id": "prac-1",
+            "identifier": [
+              {
+                "system": "http://hl7.org/fhir/sid/us-npi",
+                "value": "1111111112"
+              }
+            ],
+            "name": [
+              {
+                "family": "Jones",
+                "given": [
+                  "Pat"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "extension": {
+    "davinci-crd.configuration": {
+      "coverage-info": true,
+      "max-cards": 10
+    }
+  }
+}
+
+### S4 Oxygen -> no PA, but documentation for the claim (DTR only)
+POST {{base}}/cds-services/crd-order-sign
+Content-Type: application/json
+
+{
+  "hook": "order-sign",
+  "hookInstance": "00000000-0000-0000-0000-00000000024b",
+  "fhirServer": "https://ehr.example.org/fhir",
+  "context": {
+    "userId": "Practitioner/prac-1",
+    "patientId": "pat-1",
+    "encounterId": "enc-1",
+    "draftOrders": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "DeviceRequest",
+            "id": "dr-e1390",
+            "status": "draft",
+            "intent": "order",
+            "codeCodeableConcept": {
+              "coding": [
+                {
+                  "system": "https://bluebutton.cms.gov/resources/codesystem/hcpcs",
+                  "code": "E1390",
+                  "display": "Oxygen concentrator"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "Patient/pat-1"
+            },
+            "authoredOn": "2026-09-24",
+            "requester": {
+              "reference": "Practitioner/prac-1"
+            },
+            "insurance": [
+              {
+                "reference": "Coverage/cov-1"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "prefetch": {
+    "patient": {
+      "resourceType": "Patient",
+      "id": "pat-1",
+      "identifier": [
+        {
+          "system": "http://example.org/member-ids",
+          "value": "MBR-1001"
+        }
+      ],
+      "name": [
+        {
+          "family": "Shaw",
+          "given": [
+            "Amy"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1970-02-20"
+    },
+    "coverage": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Coverage",
+            "id": "cov-1",
+            "status": "active",
+            "subscriberId": "MBR-1001",
+            "beneficiary": {
+              "reference": "Patient/pat-1"
+            },
+            "relationship": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                  "code": "self"
+                }
+              ]
+            },
+            "period": {
+              "start": "2026-01-01",
+              "end": "2026-12-31"
+            },
+            "payor": [
+              {
+                "identifier": {
+                  "system": "http://example.org/payer-ids",
+                  "value": "PAYER001"
+                },
+                "display": "Example Health Plan"
+              }
+            ],
+            "class": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                      "code": "plan"
+                    }
+                  ]
+                },
+                "value": "GOLD-PPO",
+                "name": "Gold PPO"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "practitioner": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Practitioner",
+            "id": "prac-1",
+            "identifier": [
+              {
+                "system": "http://hl7.org/fhir/sid/us-npi",
+                "value": "1111111112"
+              }
+            ],
+            "name": [
+              {
+                "family": "Jones",
+                "given": [
+                  "Pat"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "extension": {
+    "davinci-crd.configuration": {
+      "coverage-info": true,
+      "max-cards": 10
+    }
+  }
+}
+
+### S5 Crutches -> no PA, admin documentation
+POST {{base}}/cds-services/crd-order-sign
+Content-Type: application/json
+
+{
+  "hook": "order-sign",
+  "hookInstance": "00000000-0000-0000-0000-00000000024a",
+  "fhirServer": "https://ehr.example.org/fhir",
+  "context": {
+    "userId": "Practitioner/prac-1",
+    "patientId": "pat-1",
+    "encounterId": "enc-1",
+    "draftOrders": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "DeviceRequest",
+            "id": "dr-e0114",
+            "status": "draft",
+            "intent": "order",
+            "codeCodeableConcept": {
+              "coding": [
+                {
+                  "system": "https://bluebutton.cms.gov/resources/codesystem/hcpcs",
+                  "code": "E0114",
+                  "display": "Crutches, underarm"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "Patient/pat-1"
+            },
+            "authoredOn": "2026-09-24",
+            "requester": {
+              "reference": "Practitioner/prac-1"
+            },
+            "insurance": [
+              {
+                "reference": "Coverage/cov-1"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "prefetch": {
+    "patient": {
+      "resourceType": "Patient",
+      "id": "pat-1",
+      "identifier": [
+        {
+          "system": "http://example.org/member-ids",
+          "value": "MBR-1001"
+        }
+      ],
+      "name": [
+        {
+          "family": "Shaw",
+          "given": [
+            "Amy"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1970-02-20"
+    },
+    "coverage": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Coverage",
+            "id": "cov-1",
+            "status": "active",
+            "subscriberId": "MBR-1001",
+            "beneficiary": {
+              "reference": "Patient/pat-1"
+            },
+            "relationship": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                  "code": "self"
+                }
+              ]
+            },
+            "period": {
+              "start": "2026-01-01",
+              "end": "2026-12-31"
+            },
+            "payor": [
+              {
+                "identifier": {
+                  "system": "http://example.org/payer-ids",
+                  "value": "PAYER001"
+                },
+                "display": "Example Health Plan"
+              }
+            ],
+            "class": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                      "code": "plan"
+                    }
+                  ]
+                },
+                "value": "GOLD-PPO",
+                "name": "Gold PPO"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "practitioner": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Practitioner",
+            "id": "prac-1",
+            "identifier": [
+              {
+                "system": "http://hl7.org/fhir/sid/us-npi",
+                "value": "1111111112"
+              }
+            ],
+            "name": [
+              {
+                "family": "Jones",
+                "given": [
+                  "Pat"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "extension": {
+    "davinci-crd.configuration": {
+      "coverage-info": true,
+      "max-cards": 10
+    }
+  }
+}
+
+### S6 Dermabrasion -> not-covered
+POST {{base}}/cds-services/crd-order-sign
+Content-Type: application/json
+
+{
+  "hook": "order-sign",
+  "hookInstance": "00000000-0000-0000-0000-00000000022b",
+  "fhirServer": "https://ehr.example.org/fhir",
+  "context": {
+    "userId": "Practitioner/prac-1",
+    "patientId": "pat-1",
+    "encounterId": "enc-1",
+    "draftOrders": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "ServiceRequest",
+            "id": "sr-15780",
+            "status": "draft",
+            "intent": "order",
+            "code": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "15780",
+                  "display": "Dermabrasion, total face"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "Patient/pat-1"
+            },
+            "authoredOn": "2026-09-24",
+            "requester": {
+              "reference": "Practitioner/prac-1"
+            },
+            "insurance": [
+              {
+                "reference": "Coverage/cov-1"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "prefetch": {
+    "patient": {
+      "resourceType": "Patient",
+      "id": "pat-1",
+      "identifier": [
+        {
+          "system": "http://example.org/member-ids",
+          "value": "MBR-1001"
+        }
+      ],
+      "name": [
+        {
+          "family": "Shaw",
+          "given": [
+            "Amy"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1970-02-20"
+    },
+    "coverage": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Coverage",
+            "id": "cov-1",
+            "status": "active",
+            "subscriberId": "MBR-1001",
+            "beneficiary": {
+              "reference": "Patient/pat-1"
+            },
+            "relationship": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                  "code": "self"
+                }
+              ]
+            },
+            "period": {
+              "start": "2026-01-01",
+              "end": "2026-12-31"
+            },
+            "payor": [
+              {
+                "identifier": {
+                  "system": "http://example.org/payer-ids",
+                  "value": "PAYER001"
+                },
+                "display": "Example Health Plan"
+              }
+            ],
+            "class": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                      "code": "plan"
+                    }
+                  ]
+                },
+                "value": "GOLD-PPO",
+                "name": "Gold PPO"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "practitioner": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Practitioner",
+            "id": "prac-1",
+            "identifier": [
+              {
+                "system": "http://hl7.org/fhir/sid/us-npi",
+                "value": "1111111112"
+              }
+            ],
+            "name": [
+              {
+                "family": "Jones",
+                "given": [
+                  "Pat"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "extension": {
+    "davinci-crd.configuration": {
+      "coverage-info": true,
+      "max-cards": 10
+    }
+  }
+}
+
+### S7 Unlisted code -> conditional (need a more specific code)
+POST {{base}}/cds-services/crd-order-sign
+Content-Type: application/json
+
+{
+  "hook": "order-sign",
+  "hookInstance": "00000000-0000-0000-0000-000000000235",
+  "fhirServer": "https://ehr.example.org/fhir",
+  "context": {
+    "userId": "Practitioner/prac-1",
+    "patientId": "pat-1",
+    "encounterId": "enc-1",
+    "draftOrders": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "ServiceRequest",
+            "id": "sr-64999",
+            "status": "draft",
+            "intent": "order",
+            "code": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "64999",
+                  "display": "Unlisted procedure, nervous system"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "Patient/pat-1"
+            },
+            "authoredOn": "2026-09-24",
+            "requester": {
+              "reference": "Practitioner/prac-1"
+            },
+            "insurance": [
+              {
+                "reference": "Coverage/cov-1"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "prefetch": {
+    "patient": {
+      "resourceType": "Patient",
+      "id": "pat-1",
+      "identifier": [
+        {
+          "system": "http://example.org/member-ids",
+          "value": "MBR-1001"
+        }
+      ],
+      "name": [
+        {
+          "family": "Shaw",
+          "given": [
+            "Amy"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1970-02-20"
+    },
+    "coverage": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Coverage",
+            "id": "cov-1",
+            "status": "active",
+            "subscriberId": "MBR-1001",
+            "beneficiary": {
+              "reference": "Patient/pat-1"
+            },
+            "relationship": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                  "code": "self"
+                }
+              ]
+            },
+            "period": {
+              "start": "2026-01-01",
+              "end": "2026-12-31"
+            },
+            "payor": [
+              {
+                "identifier": {
+                  "system": "http://example.org/payer-ids",
+                  "value": "PAYER001"
+                },
+                "display": "Example Health Plan"
+              }
+            ],
+            "class": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                      "code": "plan"
+                    }
+                  ]
+                },
+                "value": "GOLD-PPO",
+                "name": "Gold PPO"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "practitioner": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Practitioner",
+            "id": "prac-1",
+            "identifier": [
+              {
+                "system": "http://hl7.org/fhir/sid/us-npi",
+                "value": "1111111112"
+              }
+            ],
+            "name": [
+              {
+                "family": "Jones",
+                "given": [
+                  "Pat"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "extension": {
+    "davinci-crd.configuration": {
+      "coverage-info": true,
+      "max-cards": 10
+    }
+  }
+}
+
+### S8a Knee, no location -> conditional, info-needed = location
+POST {{base}}/cds-services/crd-order-sign
+Content-Type: application/json
+
+{
+  "hook": "order-sign",
+  "hookInstance": "00000000-0000-0000-0000-00000000022a",
+  "fhirServer": "https://ehr.example.org/fhir",
+  "context": {
+    "userId": "Practitioner/prac-1",
+    "patientId": "pat-1",
+    "encounterId": "enc-1",
+    "draftOrders": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "ServiceRequest",
+            "id": "sr-27447",
+            "status": "draft",
+            "intent": "order",
+            "code": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "27447",
+                  "display": "Total knee arthroplasty"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "Patient/pat-1"
+            },
+            "authoredOn": "2026-09-24",
+            "requester": {
+              "reference": "Practitioner/prac-1"
+            },
+            "insurance": [
+              {
+                "reference": "Coverage/cov-1"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "prefetch": {
+    "patient": {
+      "resourceType": "Patient",
+      "id": "pat-1",
+      "identifier": [
+        {
+          "system": "http://example.org/member-ids",
+          "value": "MBR-1001"
+        }
+      ],
+      "name": [
+        {
+          "family": "Shaw",
+          "given": [
+            "Amy"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1970-02-20"
+    },
+    "coverage": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Coverage",
+            "id": "cov-1",
+            "status": "active",
+            "subscriberId": "MBR-1001",
+            "beneficiary": {
+              "reference": "Patient/pat-1"
+            },
+            "relationship": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                  "code": "self"
+                }
+              ]
+            },
+            "period": {
+              "start": "2026-01-01",
+              "end": "2026-12-31"
+            },
+            "payor": [
+              {
+                "identifier": {
+                  "system": "http://example.org/payer-ids",
+                  "value": "PAYER001"
+                },
+                "display": "Example Health Plan"
+              }
+            ],
+            "class": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                      "code": "plan"
+                    }
+                  ]
+                },
+                "value": "GOLD-PPO",
+                "name": "Gold PPO"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "practitioner": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Practitioner",
+            "id": "prac-1",
+            "identifier": [
+              {
+                "system": "http://hl7.org/fhir/sid/us-npi",
+                "value": "1111111112"
+              }
+            ],
+            "name": [
+              {
+                "family": "Jones",
+                "given": [
+                  "Pat"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "extension": {
+    "davinci-crd.configuration": {
+      "coverage-info": true,
+      "max-cards": 10
+    }
+  }
+}
+
+### S8b Knee inpatient -> auth-needed, doc-needed = both
+POST {{base}}/cds-services/crd-order-sign
+Content-Type: application/json
+
+{
+  "hook": "order-sign",
+  "hookInstance": "00000000-0000-0000-0000-0000000002bc",
+  "fhirServer": "https://ehr.example.org/fhir",
+  "context": {
+    "userId": "Practitioner/prac-1",
+    "patientId": "pat-1",
+    "encounterId": "enc-1",
+    "draftOrders": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "ServiceRequest",
+            "id": "sr-27447",
+            "status": "draft",
+            "intent": "order",
+            "code": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "27447",
+                  "display": "Total knee arthroplasty"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "Patient/pat-1"
+            },
+            "authoredOn": "2026-09-24",
+            "requester": {
+              "reference": "Practitioner/prac-1"
+            },
+            "insurance": [
+              {
+                "reference": "Coverage/cov-1"
+              }
+            ],
+            "locationCode": [
+              {
+                "coding": [
+                  {
+                    "system": "https://www.cms.gov/Medicare/Coding/place-of-service-codes/Place_of_Service_Code_Set",
+                    "code": "21"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "prefetch": {
+    "patient": {
+      "resourceType": "Patient",
+      "id": "pat-1",
+      "identifier": [
+        {
+          "system": "http://example.org/member-ids",
+          "value": "MBR-1001"
+        }
+      ],
+      "name": [
+        {
+          "family": "Shaw",
+          "given": [
+            "Amy"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1970-02-20"
+    },
+    "coverage": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Coverage",
+            "id": "cov-1",
+            "status": "active",
+            "subscriberId": "MBR-1001",
+            "beneficiary": {
+              "reference": "Patient/pat-1"
+            },
+            "relationship": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                  "code": "self"
+                }
+              ]
+            },
+            "period": {
+              "start": "2026-01-01",
+              "end": "2026-12-31"
+            },
+            "payor": [
+              {
+                "identifier": {
+                  "system": "http://example.org/payer-ids",
+                  "value": "PAYER001"
+                },
+                "display": "Example Health Plan"
+              }
+            ],
+            "class": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                      "code": "plan"
+                    }
+                  ]
+                },
+                "value": "GOLD-PPO",
+                "name": "Gold PPO"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "practitioner": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Practitioner",
+            "id": "prac-1",
+            "identifier": [
+              {
+                "system": "http://hl7.org/fhir/sid/us-npi",
+                "value": "1111111112"
+              }
+            ],
+            "name": [
+              {
+                "family": "Jones",
+                "given": [
+                  "Pat"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "extension": {
+    "davinci-crd.configuration": {
+      "coverage-info": true,
+      "max-cards": 10
+    }
+  }
+}
+
+### S8c Knee outpatient -> no-auth
+POST {{base}}/cds-services/crd-order-sign
+Content-Type: application/json
+
+{
+  "hook": "order-sign",
+  "hookInstance": "00000000-0000-0000-0000-0000000002bc",
+  "fhirServer": "https://ehr.example.org/fhir",
+  "context": {
+    "userId": "Practitioner/prac-1",
+    "patientId": "pat-1",
+    "encounterId": "enc-1",
+    "draftOrders": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "ServiceRequest",
+            "id": "sr-27447",
+            "status": "draft",
+            "intent": "order",
+            "code": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "27447",
+                  "display": "Total knee arthroplasty"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "Patient/pat-1"
+            },
+            "authoredOn": "2026-09-24",
+            "requester": {
+              "reference": "Practitioner/prac-1"
+            },
+            "insurance": [
+              {
+                "reference": "Coverage/cov-1"
+              }
+            ],
+            "locationCode": [
+              {
+                "coding": [
+                  {
+                    "system": "https://www.cms.gov/Medicare/Coding/place-of-service-codes/Place_of_Service_Code_Set",
+                    "code": "22"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "prefetch": {
+    "patient": {
+      "resourceType": "Patient",
+      "id": "pat-1",
+      "identifier": [
+        {
+          "system": "http://example.org/member-ids",
+          "value": "MBR-1001"
+        }
+      ],
+      "name": [
+        {
+          "family": "Shaw",
+          "given": [
+            "Amy"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1970-02-20"
+    },
+    "coverage": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Coverage",
+            "id": "cov-1",
+            "status": "active",
+            "subscriberId": "MBR-1001",
+            "beneficiary": {
+              "reference": "Patient/pat-1"
+            },
+            "relationship": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                  "code": "self"
+                }
+              ]
+            },
+            "period": {
+              "start": "2026-01-01",
+              "end": "2026-12-31"
+            },
+            "payor": [
+              {
+                "identifier": {
+                  "system": "http://example.org/payer-ids",
+                  "value": "PAYER001"
+                },
+                "display": "Example Health Plan"
+              }
+            ],
+            "class": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                      "code": "plan"
+                    }
+                  ]
+                },
+                "value": "GOLD-PPO",
+                "name": "Gold PPO"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "practitioner": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Practitioner",
+            "id": "prac-1",
+            "identifier": [
+              {
+                "system": "http://hl7.org/fhir/sid/us-npi",
+                "value": "1111111112"
+              }
+            ],
+            "name": [
+              {
+                "family": "Jones",
+                "given": [
+                  "Pat"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "extension": {
+    "davinci-crd.configuration": {
+      "coverage-info": true,
+      "max-cards": 10
+    }
+  }
+}
+
+### S9 Gold-card doctor -> no-auth (reason gold-card)
+POST {{base}}/cds-services/crd-order-sign
+Content-Type: application/json
+
+{
+  "hook": "order-sign",
+  "hookInstance": "00000000-0000-0000-0000-00000000024b",
+  "fhirServer": "https://ehr.example.org/fhir",
+  "context": {
+    "userId": "Practitioner/prac-1",
+    "patientId": "pat-1",
+    "encounterId": "enc-1",
+    "draftOrders": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "ServiceRequest",
+            "id": "sr-97110",
+            "status": "draft",
+            "intent": "order",
+            "code": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "97110",
+                  "display": "Therapeutic exercises"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "Patient/pat-1"
+            },
+            "authoredOn": "2026-09-24",
+            "requester": {
+              "reference": "Practitioner/prac-1"
+            },
+            "insurance": [
+              {
+                "reference": "Coverage/cov-1"
+              }
+            ],
+            "quantityQuantity": {
+              "value": 12
+            }
+          }
+        }
+      ]
+    }
+  },
+  "prefetch": {
+    "patient": {
+      "resourceType": "Patient",
+      "id": "pat-1",
+      "identifier": [
+        {
+          "system": "http://example.org/member-ids",
+          "value": "MBR-1001"
+        }
+      ],
+      "name": [
+        {
+          "family": "Shaw",
+          "given": [
+            "Amy"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1970-02-20"
+    },
+    "coverage": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Coverage",
+            "id": "cov-1",
+            "status": "active",
+            "subscriberId": "MBR-1001",
+            "beneficiary": {
+              "reference": "Patient/pat-1"
+            },
+            "relationship": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                  "code": "self"
+                }
+              ]
+            },
+            "period": {
+              "start": "2026-01-01",
+              "end": "2026-12-31"
+            },
+            "payor": [
+              {
+                "identifier": {
+                  "system": "http://example.org/payer-ids",
+                  "value": "PAYER001"
+                },
+                "display": "Example Health Plan"
+              }
+            ],
+            "class": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                      "code": "plan"
+                    }
+                  ]
+                },
+                "value": "GOLD-PPO",
+                "name": "Gold PPO"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "practitioner": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Practitioner",
+            "id": "prac-1",
+            "identifier": [
+              {
+                "system": "http://hl7.org/fhir/sid/us-npi",
+                "value": "1234567893"
+              }
+            ],
+            "name": [
+              {
+                "family": "Jones",
+                "given": [
+                  "Pat"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "extension": {
+    "davinci-crd.configuration": {
+      "coverage-info": true,
+      "max-cards": 10
+    }
+  }
+}
+
+### S10 MRI brain -> performpa (the performing provider must submit)
+POST {{base}}/cds-services/crd-order-sign
+Content-Type: application/json
+
+{
+  "hook": "order-sign",
+  "hookInstance": "00000000-0000-0000-0000-000000000230",
+  "fhirServer": "https://ehr.example.org/fhir",
+  "context": {
+    "userId": "Practitioner/prac-1",
+    "patientId": "pat-1",
+    "encounterId": "enc-1",
+    "draftOrders": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "ServiceRequest",
+            "id": "sr-70553",
+            "status": "draft",
+            "intent": "order",
+            "code": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "70553",
+                  "display": "MRI brain w/ and w/o contrast"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "Patient/pat-1"
+            },
+            "authoredOn": "2026-09-24",
+            "requester": {
+              "reference": "Practitioner/prac-1"
+            },
+            "insurance": [
+              {
+                "reference": "Coverage/cov-1"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "prefetch": {
+    "patient": {
+      "resourceType": "Patient",
+      "id": "pat-1",
+      "identifier": [
+        {
+          "system": "http://example.org/member-ids",
+          "value": "MBR-1001"
+        }
+      ],
+      "name": [
+        {
+          "family": "Shaw",
+          "given": [
+            "Amy"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1970-02-20"
+    },
+    "coverage": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Coverage",
+            "id": "cov-1",
+            "status": "active",
+            "subscriberId": "MBR-1001",
+            "beneficiary": {
+              "reference": "Patient/pat-1"
+            },
+            "relationship": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                  "code": "self"
+                }
+              ]
+            },
+            "period": {
+              "start": "2026-01-01",
+              "end": "2026-12-31"
+            },
+            "payor": [
+              {
+                "identifier": {
+                  "system": "http://example.org/payer-ids",
+                  "value": "PAYER001"
+                },
+                "display": "Example Health Plan"
+              }
+            ],
+            "class": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                      "code": "plan"
+                    }
+                  ]
+                },
+                "value": "GOLD-PPO",
+                "name": "Gold PPO"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "practitioner": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Practitioner",
+            "id": "prac-1",
+            "identifier": [
+              {
+                "system": "http://hl7.org/fhir/sid/us-npi",
+                "value": "1111111112"
+              }
+            ],
+            "name": [
+              {
+                "family": "Jones",
+                "given": [
+                  "Pat"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "extension": {
+    "davinci-crd.configuration": {
+      "coverage-info": true,
+      "max-cards": 10
+    }
+  }
+}
+
+### S11 No insurance sent -> warning card
+POST {{base}}/cds-services/crd-order-sign
+Content-Type: application/json
+
+{
+  "hook": "order-sign",
+  "hookInstance": "00000000-0000-0000-0000-000000000204",
+  "fhirServer": "https://ehr.example.org/fhir",
+  "context": {
+    "userId": "Practitioner/prac-1",
+    "patientId": "pat-1",
+    "encounterId": "enc-1",
+    "draftOrders": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "ServiceRequest",
+            "id": "sr-72148",
+            "status": "draft",
+            "intent": "order",
+            "code": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "72148"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "Patient/pat-1"
+            },
+            "authoredOn": "2026-09-24",
+            "requester": {
+              "reference": "Practitioner/prac-1"
+            },
+            "insurance": [
+              {
+                "reference": "Coverage/cov-1"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "prefetch": {
+    "patient": {
+      "resourceType": "Patient",
+      "id": "pat-1",
+      "identifier": [
+        {
+          "system": "http://example.org/member-ids",
+          "value": "MBR-1001"
+        }
+      ],
+      "name": [
+        {
+          "family": "Shaw",
+          "given": [
+            "Amy"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1970-02-20"
+    },
+    "coverage": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": []
+    },
+    "practitioner": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Practitioner",
+            "id": "prac-1",
+            "identifier": [
+              {
+                "system": "http://hl7.org/fhir/sid/us-npi",
+                "value": "1111111112"
+              }
+            ],
+            "name": [
+              {
+                "family": "Jones",
+                "given": [
+                  "Pat"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "extension": {
+    "davinci-crd.configuration": {
+      "coverage-info": true,
+      "max-cards": 10
+    }
+  }
+}
+
+### Other hooks
+POST {{base}}/cds-services/crd-order-select
+Content-Type: application/json
+
+{
+  "hook": "order-select",
+  "hookInstance": "00000000-0000-0000-0000-00000000026d",
+  "fhirServer": "https://ehr.example.org/fhir",
+  "context": {
+    "userId": "Practitioner/prac-1",
+    "patientId": "pat-1",
+    "encounterId": "enc-1",
+    "draftOrders": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "DeviceRequest",
+            "id": "dr-e0601",
+            "status": "draft",
+            "intent": "order",
+            "codeCodeableConcept": {
+              "coding": [
+                {
+                  "system": "https://bluebutton.cms.gov/resources/codesystem/hcpcs",
+                  "code": "E0601",
+                  "display": "CPAP device"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "Patient/pat-1"
+            },
+            "authoredOn": "2026-09-24",
+            "requester": {
+              "reference": "Practitioner/prac-1"
+            },
+            "insurance": [
+              {
+                "reference": "Coverage/cov-1"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "selections": [
+      "DeviceRequest/dr-e0601"
+    ]
+  },
+  "prefetch": {
+    "patient": {
+      "resourceType": "Patient",
+      "id": "pat-1",
+      "identifier": [
+        {
+          "system": "http://example.org/member-ids",
+          "value": "MBR-1001"
+        }
+      ],
+      "name": [
+        {
+          "family": "Shaw",
+          "given": [
+            "Amy"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1970-02-20"
+    },
+    "coverage": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Coverage",
+            "id": "cov-1",
+            "status": "active",
+            "subscriberId": "MBR-1001",
+            "beneficiary": {
+              "reference": "Patient/pat-1"
+            },
+            "relationship": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                  "code": "self"
+                }
+              ]
+            },
+            "period": {
+              "start": "2026-01-01",
+              "end": "2026-12-31"
+            },
+            "payor": [
+              {
+                "identifier": {
+                  "system": "http://example.org/payer-ids",
+                  "value": "PAYER001"
+                },
+                "display": "Example Health Plan"
+              }
+            ],
+            "class": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                      "code": "plan"
+                    }
+                  ]
+                },
+                "value": "GOLD-PPO",
+                "name": "Gold PPO"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "practitioner": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Practitioner",
+            "id": "prac-1",
+            "identifier": [
+              {
+                "system": "http://hl7.org/fhir/sid/us-npi",
+                "value": "1111111112"
+              }
+            ],
+            "name": [
+              {
+                "family": "Jones",
+                "given": [
+                  "Pat"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "extension": {
+    "davinci-crd.configuration": {
+      "coverage-info": true,
+      "max-cards": 10
+    }
+  }
+}
+
+###
+POST {{base}}/cds-services/crd-appointment-book
+Content-Type: application/json
+
+{
+  "hook": "appointment-book",
+  "hookInstance": "00000000-0000-0000-0000-0000000001c0",
+  "fhirServer": "https://ehr.example.org/fhir",
+  "context": {
+    "userId": "Practitioner/prac-1",
+    "patientId": "pat-1",
+    "encounterId": "enc-1",
+    "appointments": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Appointment",
+            "id": "appt-1",
+            "status": "proposed",
+            "serviceType": [
+              {
+                "coding": [
+                  {
+                    "system": "http://www.ama-assn.org/go/cpt",
+                    "code": "72148",
+                    "display": "MRI lumbar spine"
+                  }
+                ]
+              }
+            ],
+            "participant": [
+              {
+                "actor": {
+                  "reference": "Patient/pat-1"
+                },
+                "status": "accepted"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "prefetch": {
+    "patient": {
+      "resourceType": "Patient",
+      "id": "pat-1",
+      "identifier": [
+        {
+          "system": "http://example.org/member-ids",
+          "value": "MBR-1001"
+        }
+      ],
+      "name": [
+        {
+          "family": "Shaw",
+          "given": [
+            "Amy"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1970-02-20"
+    },
+    "coverage": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Coverage",
+            "id": "cov-1",
+            "status": "active",
+            "subscriberId": "MBR-1001",
+            "beneficiary": {
+              "reference": "Patient/pat-1"
+            },
+            "relationship": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                  "code": "self"
+                }
+              ]
+            },
+            "period": {
+              "start": "2026-01-01",
+              "end": "2026-12-31"
+            },
+            "payor": [
+              {
+                "identifier": {
+                  "system": "http://example.org/payer-ids",
+                  "value": "PAYER001"
+                },
+                "display": "Example Health Plan"
+              }
+            ],
+            "class": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                      "code": "plan"
+                    }
+                  ]
+                },
+                "value": "GOLD-PPO",
+                "name": "Gold PPO"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "practitioner": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Practitioner",
+            "id": "prac-1",
+            "identifier": [
+              {
+                "system": "http://hl7.org/fhir/sid/us-npi",
+                "value": "1111111112"
+              }
+            ],
+            "name": [
+              {
+                "family": "Jones",
+                "given": [
+                  "Pat"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "extension": {
+    "davinci-crd.configuration": {
+      "coverage-info": true,
+      "max-cards": 10
+    }
+  }
+}
+
+###
+POST {{base}}/cds-services/crd-order-dispatch
+Content-Type: application/json
+
+{
+  "hook": "order-dispatch",
+  "hookInstance": "00000000-0000-0000-0000-00000000009a",
+  "fhirServer": "https://ehr.example.org/fhir",
+  "context": {
+    "userId": "Practitioner/prac-1",
+    "patientId": "pat-1",
+    "encounterId": "enc-1",
+    "order": "ServiceRequest/sr-72148",
+    "performer": "Organization/imaging-1"
+  },
+  "prefetch": {
+    "patient": {
+      "resourceType": "Patient",
+      "id": "pat-1",
+      "identifier": [
+        {
+          "system": "http://example.org/member-ids",
+          "value": "MBR-1001"
+        }
+      ],
+      "name": [
+        {
+          "family": "Shaw",
+          "given": [
+            "Amy"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1970-02-20"
+    },
+    "coverage": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Coverage",
+            "id": "cov-1",
+            "status": "active",
+            "subscriberId": "MBR-1001",
+            "beneficiary": {
+              "reference": "Patient/pat-1"
+            },
+            "relationship": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                  "code": "self"
+                }
+              ]
+            },
+            "period": {
+              "start": "2026-01-01",
+              "end": "2026-12-31"
+            },
+            "payor": [
+              {
+                "identifier": {
+                  "system": "http://example.org/payer-ids",
+                  "value": "PAYER001"
+                },
+                "display": "Example Health Plan"
+              }
+            ],
+            "class": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                      "code": "plan"
+                    }
+                  ]
+                },
+                "value": "GOLD-PPO",
+                "name": "Gold PPO"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "practitioner": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Practitioner",
+            "id": "prac-1",
+            "identifier": [
+              {
+                "system": "http://hl7.org/fhir/sid/us-npi",
+                "value": "1111111112"
+              }
+            ],
+            "name": [
+              {
+                "family": "Jones",
+                "given": [
+                  "Pat"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "order": {
+      "resourceType": "ServiceRequest",
+      "id": "sr-72148",
+      "status": "draft",
+      "intent": "order",
+      "code": {
+        "coding": [
+          {
+            "system": "http://www.ama-assn.org/go/cpt",
+            "code": "72148",
+            "display": "MRI lumbar spine w/o contrast"
+          }
+        ]
+      },
+      "subject": {
+        "reference": "Patient/pat-1"
+      },
+      "authoredOn": "2026-09-24",
+      "requester": {
+        "reference": "Practitioner/prac-1"
+      },
+      "insurance": [
+        {
+          "reference": "Coverage/cov-1"
+        }
+      ]
+    }
+  },
+  "extension": {
+    "davinci-crd.configuration": {
+      "coverage-info": true,
+      "max-cards": 10
+    }
+  }
+}
+
+
+### =====================================================================
+### STEP 2: DTR - the DTR app downloads the questionnaire
+### Response: "PackageBundle" = Questionnaire + CQL Library
+### =====================================================================
+
+### 2a By questionnaire URL (the URL CRD returned)
+POST {{base}}/fhir/Questionnaire/$questionnaire-package
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Parameters",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/dtr-qpackage-input-parameters"
+    ]
+  },
+  "parameter": [
+    {
+      "name": "coverage",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "cov-1",
+        "status": "active",
+        "subscriberId": "MBR-1001",
+        "beneficiary": {
+          "reference": "Patient/pat-1"
+        },
+        "relationship": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+              "code": "self"
+            }
+          ]
+        },
+        "period": {
+          "start": "2026-01-01",
+          "end": "2026-12-31"
+        },
+        "payor": [
+          {
+            "identifier": {
+              "system": "http://example.org/payer-ids",
+              "value": "PAYER001"
+            },
+            "display": "Example Health Plan"
+          }
+        ],
+        "class": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                  "code": "plan"
+                }
+              ]
+            },
+            "value": "GOLD-PPO",
+            "name": "Gold PPO"
+          }
+        ]
+      }
+    },
+    {
+      "name": "questionnaire",
+      "valueCanonical": "http://example.org/fhir/Questionnaire/cpap-e0601|1.0.0"
+    }
+  ]
+}
+
+### 2b By order (API works out which questionnaire is needed)
+POST {{base}}/fhir/Questionnaire/$questionnaire-package
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "coverage",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "cov-1",
+        "status": "active",
+        "subscriberId": "MBR-1001",
+        "beneficiary": {
+          "reference": "Patient/pat-1"
+        },
+        "relationship": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+              "code": "self"
+            }
+          ]
+        },
+        "period": {
+          "start": "2026-01-01",
+          "end": "2026-12-31"
+        },
+        "payor": [
+          {
+            "identifier": {
+              "system": "http://example.org/payer-ids",
+              "value": "PAYER001"
+            },
+            "display": "Example Health Plan"
+          }
+        ],
+        "class": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                  "code": "plan"
+                }
+              ]
+            },
+            "value": "GOLD-PPO",
+            "name": "Gold PPO"
+          }
+        ]
+      }
+    },
+    {
+      "name": "order",
+      "resource": {
+        "resourceType": "DeviceRequest",
+        "id": "dr-e0601",
+        "status": "draft",
+        "intent": "order",
+        "codeCodeableConcept": {
+          "coding": [
+            {
+              "system": "https://bluebutton.cms.gov/resources/codesystem/hcpcs",
+              "code": "E0601",
+              "display": "CPAP device"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "authoredOn": "2026-09-24",
+        "requester": {
+          "reference": "Practitioner/prac-1"
+        },
+        "insurance": [
+          {
+            "reference": "Coverage/cov-1"
+          }
+        ]
+      }
+    }
+  ]
+}
+
+### 2c By context: PASTE the coverage-assertion-id from S2 in place of PASTE-ID-HERE
+POST {{base}}/fhir/Questionnaire/$questionnaire-package
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    { "name": "context", "valueString": "PASTE-ID-HERE" }
+  ]
+}
+
+### 2d Office visit -> no questionnaire needed (outcome message)
+POST {{base}}/fhir/Questionnaire/$questionnaire-package
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "coverage",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "cov-1",
+        "status": "active",
+        "subscriberId": "MBR-1001",
+        "beneficiary": {
+          "reference": "Patient/pat-1"
+        },
+        "relationship": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+              "code": "self"
+            }
+          ]
+        },
+        "period": {
+          "start": "2026-01-01",
+          "end": "2026-12-31"
+        },
+        "payor": [
+          {
+            "identifier": {
+              "system": "http://example.org/payer-ids",
+              "value": "PAYER001"
+            },
+            "display": "Example Health Plan"
+          }
+        ],
+        "class": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                  "code": "plan"
+                }
+              ]
+            },
+            "value": "GOLD-PPO",
+            "name": "Gold PPO"
+          }
+        ]
+      }
+    },
+    {
+      "name": "order",
+      "resource": {
+        "resourceType": "ServiceRequest",
+        "id": "sr-99213",
+        "status": "draft",
+        "intent": "order",
+        "code": {
+          "coding": [
+            {
+              "system": "http://www.ama-assn.org/go/cpt",
+              "code": "99213"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "authoredOn": "2026-09-24",
+        "requester": {
+          "reference": "Practitioner/prac-1"
+        },
+        "insurance": [
+          {
+            "reference": "Coverage/cov-1"
+          }
+        ]
+      }
+    }
+  ]
+}
+
+### 2e Adaptive form: first question
+POST {{base}}/fhir/Questionnaire/$next-question
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "in",
+      "resource": {
+        "resourceType": "QuestionnaireResponse",
+        "id": "qr-o2",
+        "contained": [
+          {
+            "resourceType": "Questionnaire",
+            "id": "home-o2-adaptive",
+            "url": "http://example.org/fhir/Questionnaire/home-o2-adaptive",
+            "version": "1.0.0",
+            "status": "active",
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-questionnaireAdaptive",
+                "valueBoolean": true
+              }
+            ]
+          }
+        ],
+        "questionnaire": "#home-o2-adaptive",
+        "status": "in-progress",
+        "subject": {
+          "reference": "Patient/pat-1"
+        }
+      }
+    }
+  ]
+}
+
+### 2f Adaptive form: after answering SpO2 = 91 -> next question
+POST {{base}}/fhir/Questionnaire/$next-question
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "in",
+      "resource": {
+        "resourceType": "QuestionnaireResponse",
+        "id": "qr-o2",
+        "contained": [
+          {
+            "resourceType": "Questionnaire",
+            "id": "home-o2-adaptive",
+            "url": "http://example.org/fhir/Questionnaire/home-o2-adaptive",
+            "version": "1.0.0",
+            "status": "active",
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-questionnaireAdaptive",
+                "valueBoolean": true
+              }
+            ],
+            "item": [
+              {
+                "linkId": "spo2",
+                "text": "Resting oxygen saturation (SpO2 %) on room air",
+                "type": "decimal",
+                "required": true
+              }
+            ]
+          }
+        ],
+        "questionnaire": "#home-o2-adaptive",
+        "status": "in-progress",
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "item": [
+          {
+            "linkId": "spo2",
+            "answer": [
+              {
+                "valueDecimal": 91,
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                    "extension": [
+                      {
+                        "url": "source",
+                        "valueCode": "auto"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+
+
+### =====================================================================
+### STEP 3: PAS - submit the prior authorization request
+### Response: ClaimResponse -> item -> reviewActionCode (A1 approved, A2 partial,
+###           A3 denied, A4 pended, NA not required, C cancelled)
+### =====================================================================
+
+### P1 CPAP with completed questionnaire (AHI 22) -> A1 approved
+POST {{base}}/fhir/Claim/$submit
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Bundle",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-pas-request-bundle"
+    ]
+  },
+  "identifier": {
+    "system": "http://example.org/provider/bundle-ids",
+    "value": "B-001"
+  },
+  "type": "collection",
+  "timestamp": "2026-09-24T10:05:00Z",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:7b0f2b5d-f0aa-5fa0-8de1-6efcf5fe09bb",
+      "resource": {
+        "resourceType": "Claim",
+        "id": "claim-1",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-claim"
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://example.org/provider/claim-ids",
+            "value": "PA-CPAP-001"
+          }
+        ],
+        "status": "active",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/claim-type",
+              "code": "professional"
+            }
+          ]
+        },
+        "use": "preauthorization",
+        "patient": {
+          "reference": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd"
+        },
+        "created": "2026-09-24T10:05:00Z",
+        "insurer": {
+          "reference": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1"
+        },
+        "provider": {
+          "reference": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c"
+        },
+        "priority": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/processpriority",
+              "code": "normal"
+            }
+          ]
+        },
+        "insurance": [
+          {
+            "sequence": 1,
+            "focal": true,
+            "coverage": {
+              "reference": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065"
+            }
+          }
+        ],
+        "item": [
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-itemTraceNumber",
+                "valueIdentifier": {
+                  "system": "http://example.org/provider/trace",
+                  "value": "PA-CPAP-001-1"
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-certificationType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1322",
+                      "code": "I"
+                    }
+                  ]
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-serviceItemRequestType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1525",
+                      "code": "HS",
+                      "display": "Health Services Review"
+                    }
+                  ]
+                }
+              }
+            ],
+            "sequence": 1,
+            "category": {
+              "coding": [
+                {
+                  "system": "https://codesystem.x12.org/005010/1365",
+                  "code": "18"
+                }
+              ]
+            },
+            "productOrService": {
+              "coding": [
+                {
+                  "system": "https://bluebutton.cms.gov/resources/codesystem/hcpcs",
+                  "code": "E0601"
+                }
+              ]
+            },
+            "quantity": {
+              "value": 1
+            },
+            "servicedDate": "2026-10-01"
+          }
+        ],
+        "supportingInfo": [
+          {
+            "sequence": 1,
+            "category": {
+              "coding": [
+                {
+                  "system": "http://hl7.org/fhir/us/davinci-pas/CodeSystem/PASTempCodes",
+                  "code": "additionalInformation"
+                }
+              ]
+            },
+            "valueReference": {
+              "reference": "urn:uuid:173a61fc-3c8a-512b-95e1-f876db83d2fb"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pat-1",
+        "identifier": [
+          {
+            "system": "http://example.org/member-ids",
+            "value": "MBR-1001"
+          }
+        ],
+        "name": [
+          {
+            "family": "Shaw",
+            "given": [
+              "Amy"
+            ]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1970-02-20"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "cov-1",
+        "status": "active",
+        "subscriberId": "MBR-1001",
+        "beneficiary": {
+          "reference": "Patient/pat-1"
+        },
+        "relationship": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+              "code": "self"
+            }
+          ]
+        },
+        "period": {
+          "start": "2026-01-01",
+          "end": "2026-12-31"
+        },
+        "payor": [
+          {
+            "identifier": {
+              "system": "http://example.org/payer-ids",
+              "value": "PAYER001"
+            },
+            "display": "Example Health Plan"
+          }
+        ],
+        "class": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                  "code": "plan"
+                }
+              ]
+            },
+            "value": "GOLD-PPO",
+            "name": "Gold PPO"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "payer-1",
+        "identifier": [
+          {
+            "system": "http://example.org/payer-ids",
+            "value": "PAYER001"
+          }
+        ],
+        "name": "Example Health Plan"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "org-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1999999992"
+          }
+        ],
+        "name": "Good Health Clinic"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:409e5292-6fab-5310-a399-c5f1b45818c5",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "prac-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1111111112"
+          }
+        ],
+        "name": [
+          {
+            "family": "Jones",
+            "given": [
+              "Pat"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:173a61fc-3c8a-512b-95e1-f876db83d2fb",
+      "resource": {
+        "resourceType": "QuestionnaireResponse",
+        "id": "qr-cpap",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/dtr-questionnaireresponse"
+          ]
+        },
+        "questionnaire": "http://example.org/fhir/Questionnaire/cpap-e0601|1.0.0",
+        "status": "completed",
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "authored": "2026-09-24T10:00:00Z",
+        "author": {
+          "reference": "Practitioner/prac-1"
+        },
+        "item": [
+          {
+            "linkId": "sleep-study",
+            "item": [
+              {
+                "linkId": "sleep-study-date",
+                "answer": [
+                  {
+                    "valueDate": "2026-08-15",
+                    "extension": [
+                      {
+                        "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                        "extension": [
+                          {
+                            "url": "source",
+                            "valueCode": "auto"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "linkId": "ahi",
+                "answer": [
+                  {
+                    "valueDecimal": 22,
+                    "extension": [
+                      {
+                        "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                        "extension": [
+                          {
+                            "url": "source",
+                            "valueCode": "auto"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "linkId": "face-to-face",
+            "answer": [
+              {
+                "valueBoolean": true,
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                    "extension": [
+                      {
+                        "url": "source",
+                        "valueCode": "auto"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "linkId": "daytime-sleepiness",
+            "answer": [
+              {
+                "valueBoolean": true,
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                    "extension": [
+                      {
+                        "url": "source",
+                        "valueCode": "override"
+                      },
+                      {
+                        "url": "author",
+                        "extension": [
+                          {
+                            "url": "practitioner",
+                            "valueReference": {
+                              "reference": "Practitioner/prac-1"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "linkId": "attestation",
+            "answer": [
+              {
+                "valueBoolean": true,
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                    "extension": [
+                      {
+                        "url": "source",
+                        "valueCode": "manual"
+                      },
+                      {
+                        "url": "author",
+                        "extension": [
+                          {
+                            "url": "practitioner",
+                            "valueReference": {
+                              "reference": "Practitioner/prac-1"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+
+### After P1, run S2 again (CRD) -> pa-needed = satisfied
+POST {{base}}/cds-services/crd-order-sign
+Content-Type: application/json
+
+{
+  "hook": "order-sign",
+  "hookInstance": "00000000-0000-0000-0000-000000000243",
+  "fhirServer": "https://ehr.example.org/fhir",
+  "context": {
+    "userId": "Practitioner/prac-1",
+    "patientId": "pat-1",
+    "encounterId": "enc-1",
+    "draftOrders": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "DeviceRequest",
+            "id": "dr-e0601",
+            "status": "draft",
+            "intent": "order",
+            "codeCodeableConcept": {
+              "coding": [
+                {
+                  "system": "https://bluebutton.cms.gov/resources/codesystem/hcpcs",
+                  "code": "E0601",
+                  "display": "CPAP device"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "Patient/pat-1"
+            },
+            "authoredOn": "2026-09-24",
+            "requester": {
+              "reference": "Practitioner/prac-1"
+            },
+            "insurance": [
+              {
+                "reference": "Coverage/cov-1"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "prefetch": {
+    "patient": {
+      "resourceType": "Patient",
+      "id": "pat-1",
+      "identifier": [
+        {
+          "system": "http://example.org/member-ids",
+          "value": "MBR-1001"
+        }
+      ],
+      "name": [
+        {
+          "family": "Shaw",
+          "given": [
+            "Amy"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1970-02-20"
+    },
+    "coverage": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Coverage",
+            "id": "cov-1",
+            "status": "active",
+            "subscriberId": "MBR-1001",
+            "beneficiary": {
+              "reference": "Patient/pat-1"
+            },
+            "relationship": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+                  "code": "self"
+                }
+              ]
+            },
+            "period": {
+              "start": "2026-01-01",
+              "end": "2026-12-31"
+            },
+            "payor": [
+              {
+                "identifier": {
+                  "system": "http://example.org/payer-ids",
+                  "value": "PAYER001"
+                },
+                "display": "Example Health Plan"
+              }
+            ],
+            "class": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                      "code": "plan"
+                    }
+                  ]
+                },
+                "value": "GOLD-PPO",
+                "name": "Gold PPO"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "practitioner": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Practitioner",
+            "id": "prac-1",
+            "identifier": [
+              {
+                "system": "http://hl7.org/fhir/sid/us-npi",
+                "value": "1111111112"
+              }
+            ],
+            "name": [
+              {
+                "family": "Jones",
+                "given": [
+                  "Pat"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "extension": {
+    "davinci-crd.configuration": {
+      "coverage-info": true,
+      "max-cards": 10
+    }
+  }
+}
+
+### P2 CPAP with AHI 8 -> A4 pended for clinical review
+POST {{base}}/fhir/Claim/$submit
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Bundle",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-pas-request-bundle"
+    ]
+  },
+  "identifier": {
+    "system": "http://example.org/provider/bundle-ids",
+    "value": "B-002"
+  },
+  "type": "collection",
+  "timestamp": "2026-09-24T10:05:00Z",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:a36c0ddf-e981-5bcd-a7a9-315604ef9a8e",
+      "resource": {
+        "resourceType": "Claim",
+        "id": "claim-1",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-claim"
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://example.org/provider/claim-ids",
+            "value": "PA-CPAP-002"
+          }
+        ],
+        "status": "active",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/claim-type",
+              "code": "professional"
+            }
+          ]
+        },
+        "use": "preauthorization",
+        "patient": {
+          "reference": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd"
+        },
+        "created": "2026-09-24T10:05:00Z",
+        "insurer": {
+          "reference": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1"
+        },
+        "provider": {
+          "reference": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c"
+        },
+        "priority": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/processpriority",
+              "code": "normal"
+            }
+          ]
+        },
+        "insurance": [
+          {
+            "sequence": 1,
+            "focal": true,
+            "coverage": {
+              "reference": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065"
+            }
+          }
+        ],
+        "item": [
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-itemTraceNumber",
+                "valueIdentifier": {
+                  "system": "http://example.org/provider/trace",
+                  "value": "PA-CPAP-002-1"
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-certificationType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1322",
+                      "code": "I"
+                    }
+                  ]
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-serviceItemRequestType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1525",
+                      "code": "HS",
+                      "display": "Health Services Review"
+                    }
+                  ]
+                }
+              }
+            ],
+            "sequence": 1,
+            "category": {
+              "coding": [
+                {
+                  "system": "https://codesystem.x12.org/005010/1365",
+                  "code": "18"
+                }
+              ]
+            },
+            "productOrService": {
+              "coding": [
+                {
+                  "system": "https://bluebutton.cms.gov/resources/codesystem/hcpcs",
+                  "code": "E0601"
+                }
+              ]
+            },
+            "quantity": {
+              "value": 1
+            },
+            "servicedDate": "2026-10-01"
+          }
+        ],
+        "supportingInfo": [
+          {
+            "sequence": 1,
+            "category": {
+              "coding": [
+                {
+                  "system": "http://hl7.org/fhir/us/davinci-pas/CodeSystem/PASTempCodes",
+                  "code": "additionalInformation"
+                }
+              ]
+            },
+            "valueReference": {
+              "reference": "urn:uuid:173a61fc-3c8a-512b-95e1-f876db83d2fb"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pat-1",
+        "identifier": [
+          {
+            "system": "http://example.org/member-ids",
+            "value": "MBR-1001"
+          }
+        ],
+        "name": [
+          {
+            "family": "Shaw",
+            "given": [
+              "Amy"
+            ]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1970-02-20"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "cov-1",
+        "status": "active",
+        "subscriberId": "MBR-1001",
+        "beneficiary": {
+          "reference": "Patient/pat-1"
+        },
+        "relationship": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+              "code": "self"
+            }
+          ]
+        },
+        "period": {
+          "start": "2026-01-01",
+          "end": "2026-12-31"
+        },
+        "payor": [
+          {
+            "identifier": {
+              "system": "http://example.org/payer-ids",
+              "value": "PAYER001"
+            },
+            "display": "Example Health Plan"
+          }
+        ],
+        "class": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                  "code": "plan"
+                }
+              ]
+            },
+            "value": "GOLD-PPO",
+            "name": "Gold PPO"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "payer-1",
+        "identifier": [
+          {
+            "system": "http://example.org/payer-ids",
+            "value": "PAYER001"
+          }
+        ],
+        "name": "Example Health Plan"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "org-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1999999992"
+          }
+        ],
+        "name": "Good Health Clinic"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:409e5292-6fab-5310-a399-c5f1b45818c5",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "prac-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1111111112"
+          }
+        ],
+        "name": [
+          {
+            "family": "Jones",
+            "given": [
+              "Pat"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:173a61fc-3c8a-512b-95e1-f876db83d2fb",
+      "resource": {
+        "resourceType": "QuestionnaireResponse",
+        "id": "qr-cpap",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/dtr-questionnaireresponse"
+          ]
+        },
+        "questionnaire": "http://example.org/fhir/Questionnaire/cpap-e0601|1.0.0",
+        "status": "completed",
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "authored": "2026-09-24T10:00:00Z",
+        "author": {
+          "reference": "Practitioner/prac-1"
+        },
+        "item": [
+          {
+            "linkId": "sleep-study",
+            "item": [
+              {
+                "linkId": "sleep-study-date",
+                "answer": [
+                  {
+                    "valueDate": "2026-08-15",
+                    "extension": [
+                      {
+                        "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                        "extension": [
+                          {
+                            "url": "source",
+                            "valueCode": "auto"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "linkId": "ahi",
+                "answer": [
+                  {
+                    "valueDecimal": 8,
+                    "extension": [
+                      {
+                        "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                        "extension": [
+                          {
+                            "url": "source",
+                            "valueCode": "auto"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "linkId": "face-to-face",
+            "answer": [
+              {
+                "valueBoolean": true,
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                    "extension": [
+                      {
+                        "url": "source",
+                        "valueCode": "auto"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "linkId": "daytime-sleepiness",
+            "answer": [
+              {
+                "valueBoolean": true,
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                    "extension": [
+                      {
+                        "url": "source",
+                        "valueCode": "override"
+                      },
+                      {
+                        "url": "author",
+                        "extension": [
+                          {
+                            "url": "practitioner",
+                            "valueReference": {
+                              "reference": "Practitioner/prac-1"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "linkId": "attestation",
+            "answer": [
+              {
+                "valueBoolean": true,
+                "extension": [
+                  {
+                    "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                    "extension": [
+                      {
+                        "url": "source",
+                        "valueCode": "manual"
+                      },
+                      {
+                        "url": "author",
+                        "extension": [
+                          {
+                            "url": "practitioner",
+                            "valueReference": {
+                              "reference": "Practitioner/prac-1"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+
+### Reviewer worklist: COPY the "id" of the PA-CPAP-002 request
+GET {{base}}/um/prior-auth
+
+### Reviewer decides: PASTE the id in place of PASTE-ID-HERE -> A3 denied with reason
+POST {{base}}/um/prior-auth/PASTE-ID-HERE/items/1/decision
+Content-Type: application/json
+
+{ "action": "A3", "reasonText": "AHI below 15 without qualifying comorbidity" }
+
+### P4 MRI -> A1 approved (no documentation needed)
+POST {{base}}/fhir/Claim/$submit
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Bundle",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-pas-request-bundle"
+    ]
+  },
+  "identifier": {
+    "system": "http://example.org/provider/bundle-ids",
+    "value": "B-004"
+  },
+  "type": "collection",
+  "timestamp": "2026-09-24T10:05:00Z",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:0545667d-1ea7-5118-9883-38c19443d8c8",
+      "resource": {
+        "resourceType": "Claim",
+        "id": "claim-1",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-claim"
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://example.org/provider/claim-ids",
+            "value": "PA-MRI-004"
+          }
+        ],
+        "status": "active",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/claim-type",
+              "code": "professional"
+            }
+          ]
+        },
+        "use": "preauthorization",
+        "patient": {
+          "reference": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd"
+        },
+        "created": "2026-09-24T10:05:00Z",
+        "insurer": {
+          "reference": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1"
+        },
+        "provider": {
+          "reference": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c"
+        },
+        "priority": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/processpriority",
+              "code": "normal"
+            }
+          ]
+        },
+        "insurance": [
+          {
+            "sequence": 1,
+            "focal": true,
+            "coverage": {
+              "reference": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065"
+            }
+          }
+        ],
+        "item": [
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-itemTraceNumber",
+                "valueIdentifier": {
+                  "system": "http://example.org/provider/trace",
+                  "value": "PA-MRI-004-1"
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-certificationType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1322",
+                      "code": "I"
+                    }
+                  ]
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-serviceItemRequestType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1525",
+                      "code": "HS",
+                      "display": "Health Services Review"
+                    }
+                  ]
+                }
+              }
+            ],
+            "sequence": 1,
+            "category": {
+              "coding": [
+                {
+                  "system": "https://codesystem.x12.org/005010/1365",
+                  "code": "4"
+                }
+              ]
+            },
+            "productOrService": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "72148"
+                }
+              ]
+            },
+            "quantity": {
+              "value": 1
+            },
+            "servicedDate": "2026-10-05"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pat-1",
+        "identifier": [
+          {
+            "system": "http://example.org/member-ids",
+            "value": "MBR-1001"
+          }
+        ],
+        "name": [
+          {
+            "family": "Shaw",
+            "given": [
+              "Amy"
+            ]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1970-02-20"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "cov-1",
+        "status": "active",
+        "subscriberId": "MBR-1001",
+        "beneficiary": {
+          "reference": "Patient/pat-1"
+        },
+        "relationship": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+              "code": "self"
+            }
+          ]
+        },
+        "period": {
+          "start": "2026-01-01",
+          "end": "2026-12-31"
+        },
+        "payor": [
+          {
+            "identifier": {
+              "system": "http://example.org/payer-ids",
+              "value": "PAYER001"
+            },
+            "display": "Example Health Plan"
+          }
+        ],
+        "class": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                  "code": "plan"
+                }
+              ]
+            },
+            "value": "GOLD-PPO",
+            "name": "Gold PPO"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "payer-1",
+        "identifier": [
+          {
+            "system": "http://example.org/payer-ids",
+            "value": "PAYER001"
+          }
+        ],
+        "name": "Example Health Plan"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "org-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1999999992"
+          }
+        ],
+        "name": "Good Health Clinic"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:409e5292-6fab-5310-a399-c5f1b45818c5",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "prac-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1111111112"
+          }
+        ],
+        "name": [
+          {
+            "family": "Jones",
+            "given": [
+              "Pat"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+
+### P5 MRI quantity 2 (limit 1) -> A2 partial
+POST {{base}}/fhir/Claim/$submit
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Bundle",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-pas-request-bundle"
+    ]
+  },
+  "identifier": {
+    "system": "http://example.org/provider/bundle-ids",
+    "value": "B-005"
+  },
+  "type": "collection",
+  "timestamp": "2026-09-24T10:05:00Z",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:50a39f1c-14ec-5942-b114-87d2e378dd7c",
+      "resource": {
+        "resourceType": "Claim",
+        "id": "claim-1",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-claim"
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://example.org/provider/claim-ids",
+            "value": "PA-MRI-005"
+          }
+        ],
+        "status": "active",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/claim-type",
+              "code": "professional"
+            }
+          ]
+        },
+        "use": "preauthorization",
+        "patient": {
+          "reference": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd"
+        },
+        "created": "2026-09-24T10:05:00Z",
+        "insurer": {
+          "reference": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1"
+        },
+        "provider": {
+          "reference": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c"
+        },
+        "priority": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/processpriority",
+              "code": "normal"
+            }
+          ]
+        },
+        "insurance": [
+          {
+            "sequence": 1,
+            "focal": true,
+            "coverage": {
+              "reference": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065"
+            }
+          }
+        ],
+        "item": [
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-itemTraceNumber",
+                "valueIdentifier": {
+                  "system": "http://example.org/provider/trace",
+                  "value": "PA-MRI-005-1"
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-certificationType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1322",
+                      "code": "I"
+                    }
+                  ]
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-serviceItemRequestType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1525",
+                      "code": "HS",
+                      "display": "Health Services Review"
+                    }
+                  ]
+                }
+              }
+            ],
+            "sequence": 1,
+            "category": {
+              "coding": [
+                {
+                  "system": "https://codesystem.x12.org/005010/1365",
+                  "code": "4"
+                }
+              ]
+            },
+            "productOrService": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "72148"
+                }
+              ]
+            },
+            "quantity": {
+              "value": 2
+            },
+            "servicedDate": "2026-10-05"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pat-1",
+        "identifier": [
+          {
+            "system": "http://example.org/member-ids",
+            "value": "MBR-1001"
+          }
+        ],
+        "name": [
+          {
+            "family": "Shaw",
+            "given": [
+              "Amy"
+            ]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1970-02-20"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "cov-1",
+        "status": "active",
+        "subscriberId": "MBR-1001",
+        "beneficiary": {
+          "reference": "Patient/pat-1"
+        },
+        "relationship": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+              "code": "self"
+            }
+          ]
+        },
+        "period": {
+          "start": "2026-01-01",
+          "end": "2026-12-31"
+        },
+        "payor": [
+          {
+            "identifier": {
+              "system": "http://example.org/payer-ids",
+              "value": "PAYER001"
+            },
+            "display": "Example Health Plan"
+          }
+        ],
+        "class": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                  "code": "plan"
+                }
+              ]
+            },
+            "value": "GOLD-PPO",
+            "name": "Gold PPO"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "payer-1",
+        "identifier": [
+          {
+            "system": "http://example.org/payer-ids",
+            "value": "PAYER001"
+          }
+        ],
+        "name": "Example Health Plan"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "org-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1999999992"
+          }
+        ],
+        "name": "Good Health Clinic"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:409e5292-6fab-5310-a399-c5f1b45818c5",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "prac-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1111111112"
+          }
+        ],
+        "name": [
+          {
+            "family": "Jones",
+            "given": [
+              "Pat"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+
+### P7 Not covered -> A3 denied
+POST {{base}}/fhir/Claim/$submit
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Bundle",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-pas-request-bundle"
+    ]
+  },
+  "identifier": {
+    "system": "http://example.org/provider/bundle-ids",
+    "value": "B-007"
+  },
+  "type": "collection",
+  "timestamp": "2026-09-24T10:05:00Z",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:afe216a4-7a8a-545b-b8f2-69e9b9630021",
+      "resource": {
+        "resourceType": "Claim",
+        "id": "claim-1",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-claim"
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://example.org/provider/claim-ids",
+            "value": "PA-DERM-007"
+          }
+        ],
+        "status": "active",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/claim-type",
+              "code": "professional"
+            }
+          ]
+        },
+        "use": "preauthorization",
+        "patient": {
+          "reference": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd"
+        },
+        "created": "2026-09-24T10:05:00Z",
+        "insurer": {
+          "reference": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1"
+        },
+        "provider": {
+          "reference": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c"
+        },
+        "priority": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/processpriority",
+              "code": "normal"
+            }
+          ]
+        },
+        "insurance": [
+          {
+            "sequence": 1,
+            "focal": true,
+            "coverage": {
+              "reference": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065"
+            }
+          }
+        ],
+        "item": [
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-itemTraceNumber",
+                "valueIdentifier": {
+                  "system": "http://example.org/provider/trace",
+                  "value": "PA-DERM-007-1"
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-certificationType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1322",
+                      "code": "I"
+                    }
+                  ]
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-serviceItemRequestType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1525",
+                      "code": "HS",
+                      "display": "Health Services Review"
+                    }
+                  ]
+                }
+              }
+            ],
+            "sequence": 1,
+            "category": {
+              "coding": [
+                {
+                  "system": "https://codesystem.x12.org/005010/1365",
+                  "code": "2"
+                }
+              ]
+            },
+            "productOrService": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "15780"
+                }
+              ]
+            },
+            "quantity": {
+              "value": 1
+            },
+            "servicedDate": "2026-10-10"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pat-1",
+        "identifier": [
+          {
+            "system": "http://example.org/member-ids",
+            "value": "MBR-1001"
+          }
+        ],
+        "name": [
+          {
+            "family": "Shaw",
+            "given": [
+              "Amy"
+            ]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1970-02-20"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "cov-1",
+        "status": "active",
+        "subscriberId": "MBR-1001",
+        "beneficiary": {
+          "reference": "Patient/pat-1"
+        },
+        "relationship": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+              "code": "self"
+            }
+          ]
+        },
+        "period": {
+          "start": "2026-01-01",
+          "end": "2026-12-31"
+        },
+        "payor": [
+          {
+            "identifier": {
+              "system": "http://example.org/payer-ids",
+              "value": "PAYER001"
+            },
+            "display": "Example Health Plan"
+          }
+        ],
+        "class": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                  "code": "plan"
+                }
+              ]
+            },
+            "value": "GOLD-PPO",
+            "name": "Gold PPO"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "payer-1",
+        "identifier": [
+          {
+            "system": "http://example.org/payer-ids",
+            "value": "PAYER001"
+          }
+        ],
+        "name": "Example Health Plan"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "org-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1999999992"
+          }
+        ],
+        "name": "Good Health Clinic"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:409e5292-6fab-5310-a399-c5f1b45818c5",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "prac-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1111111112"
+          }
+        ],
+        "name": [
+          {
+            "family": "Jones",
+            "given": [
+              "Pat"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+
+### P8 PA not needed -> NA
+POST {{base}}/fhir/Claim/$submit
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Bundle",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-pas-request-bundle"
+    ]
+  },
+  "identifier": {
+    "system": "http://example.org/provider/bundle-ids",
+    "value": "B-008"
+  },
+  "type": "collection",
+  "timestamp": "2026-09-24T10:05:00Z",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:e7648253-e350-5c8a-b18b-d83a29223001",
+      "resource": {
+        "resourceType": "Claim",
+        "id": "claim-1",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-claim"
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://example.org/provider/claim-ids",
+            "value": "PA-OV-008"
+          }
+        ],
+        "status": "active",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/claim-type",
+              "code": "professional"
+            }
+          ]
+        },
+        "use": "preauthorization",
+        "patient": {
+          "reference": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd"
+        },
+        "created": "2026-09-24T10:05:00Z",
+        "insurer": {
+          "reference": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1"
+        },
+        "provider": {
+          "reference": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c"
+        },
+        "priority": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/processpriority",
+              "code": "normal"
+            }
+          ]
+        },
+        "insurance": [
+          {
+            "sequence": 1,
+            "focal": true,
+            "coverage": {
+              "reference": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065"
+            }
+          }
+        ],
+        "item": [
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-itemTraceNumber",
+                "valueIdentifier": {
+                  "system": "http://example.org/provider/trace",
+                  "value": "PA-OV-008-1"
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-certificationType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1322",
+                      "code": "I"
+                    }
+                  ]
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-serviceItemRequestType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1525",
+                      "code": "HS",
+                      "display": "Health Services Review"
+                    }
+                  ]
+                }
+              }
+            ],
+            "sequence": 1,
+            "category": {
+              "coding": [
+                {
+                  "system": "https://codesystem.x12.org/005010/1365",
+                  "code": "1"
+                }
+              ]
+            },
+            "productOrService": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "99213"
+                }
+              ]
+            },
+            "quantity": {
+              "value": 1
+            },
+            "servicedDate": "2026-10-10"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pat-1",
+        "identifier": [
+          {
+            "system": "http://example.org/member-ids",
+            "value": "MBR-1001"
+          }
+        ],
+        "name": [
+          {
+            "family": "Shaw",
+            "given": [
+              "Amy"
+            ]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1970-02-20"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "cov-1",
+        "status": "active",
+        "subscriberId": "MBR-1001",
+        "beneficiary": {
+          "reference": "Patient/pat-1"
+        },
+        "relationship": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+              "code": "self"
+            }
+          ]
+        },
+        "period": {
+          "start": "2026-01-01",
+          "end": "2026-12-31"
+        },
+        "payor": [
+          {
+            "identifier": {
+              "system": "http://example.org/payer-ids",
+              "value": "PAYER001"
+            },
+            "display": "Example Health Plan"
+          }
+        ],
+        "class": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                  "code": "plan"
+                }
+              ]
+            },
+            "value": "GOLD-PPO",
+            "name": "Gold PPO"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "payer-1",
+        "identifier": [
+          {
+            "system": "http://example.org/payer-ids",
+            "value": "PAYER001"
+          }
+        ],
+        "name": "Example Health Plan"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "org-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1999999992"
+          }
+        ],
+        "name": "Good Health Clinic"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:409e5292-6fab-5310-a399-c5f1b45818c5",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "prac-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1111111112"
+          }
+        ],
+        "name": [
+          {
+            "family": "Jones",
+            "given": [
+              "Pat"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+
+### P9 Three lines -> A1, NA, A3
+POST {{base}}/fhir/Claim/$submit
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Bundle",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-pas-request-bundle"
+    ]
+  },
+  "identifier": {
+    "system": "http://example.org/provider/bundle-ids",
+    "value": "B-009"
+  },
+  "type": "collection",
+  "timestamp": "2026-09-24T10:05:00Z",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:e2298c03-a71c-5fd9-9afe-52e2abc9b038",
+      "resource": {
+        "resourceType": "Claim",
+        "id": "claim-1",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-claim"
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://example.org/provider/claim-ids",
+            "value": "PA-MULTI-009"
+          }
+        ],
+        "status": "active",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/claim-type",
+              "code": "professional"
+            }
+          ]
+        },
+        "use": "preauthorization",
+        "patient": {
+          "reference": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd"
+        },
+        "created": "2026-09-24T10:05:00Z",
+        "insurer": {
+          "reference": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1"
+        },
+        "provider": {
+          "reference": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c"
+        },
+        "priority": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/processpriority",
+              "code": "normal"
+            }
+          ]
+        },
+        "insurance": [
+          {
+            "sequence": 1,
+            "focal": true,
+            "coverage": {
+              "reference": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065"
+            }
+          }
+        ],
+        "item": [
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-itemTraceNumber",
+                "valueIdentifier": {
+                  "system": "http://example.org/provider/trace",
+                  "value": "PA-MULTI-009-1"
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-certificationType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1322",
+                      "code": "I"
+                    }
+                  ]
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-serviceItemRequestType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1525",
+                      "code": "HS",
+                      "display": "Health Services Review"
+                    }
+                  ]
+                }
+              }
+            ],
+            "sequence": 1,
+            "category": {
+              "coding": [
+                {
+                  "system": "https://codesystem.x12.org/005010/1365",
+                  "code": "4"
+                }
+              ]
+            },
+            "productOrService": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "72148"
+                }
+              ]
+            },
+            "quantity": {
+              "value": 1
+            },
+            "servicedDate": "2026-10-05"
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-itemTraceNumber",
+                "valueIdentifier": {
+                  "system": "http://example.org/provider/trace",
+                  "value": "PA-MULTI-009-2"
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-certificationType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1322",
+                      "code": "I"
+                    }
+                  ]
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-serviceItemRequestType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1525",
+                      "code": "HS",
+                      "display": "Health Services Review"
+                    }
+                  ]
+                }
+              }
+            ],
+            "sequence": 2,
+            "category": {
+              "coding": [
+                {
+                  "system": "https://codesystem.x12.org/005010/1365",
+                  "code": "1"
+                }
+              ]
+            },
+            "productOrService": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "99213"
+                }
+              ]
+            },
+            "quantity": {
+              "value": 1
+            },
+            "servicedDate": "2026-10-05"
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-itemTraceNumber",
+                "valueIdentifier": {
+                  "system": "http://example.org/provider/trace",
+                  "value": "PA-MULTI-009-3"
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-certificationType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1322",
+                      "code": "I"
+                    }
+                  ]
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-serviceItemRequestType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1525",
+                      "code": "HS",
+                      "display": "Health Services Review"
+                    }
+                  ]
+                }
+              }
+            ],
+            "sequence": 3,
+            "category": {
+              "coding": [
+                {
+                  "system": "https://codesystem.x12.org/005010/1365",
+                  "code": "2"
+                }
+              ]
+            },
+            "productOrService": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "15780"
+                }
+              ]
+            },
+            "quantity": {
+              "value": 1
+            },
+            "servicedDate": "2026-10-05"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pat-1",
+        "identifier": [
+          {
+            "system": "http://example.org/member-ids",
+            "value": "MBR-1001"
+          }
+        ],
+        "name": [
+          {
+            "family": "Shaw",
+            "given": [
+              "Amy"
+            ]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1970-02-20"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "cov-1",
+        "status": "active",
+        "subscriberId": "MBR-1001",
+        "beneficiary": {
+          "reference": "Patient/pat-1"
+        },
+        "relationship": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+              "code": "self"
+            }
+          ]
+        },
+        "period": {
+          "start": "2026-01-01",
+          "end": "2026-12-31"
+        },
+        "payor": [
+          {
+            "identifier": {
+              "system": "http://example.org/payer-ids",
+              "value": "PAYER001"
+            },
+            "display": "Example Health Plan"
+          }
+        ],
+        "class": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                  "code": "plan"
+                }
+              ]
+            },
+            "value": "GOLD-PPO",
+            "name": "Gold PPO"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "payer-1",
+        "identifier": [
+          {
+            "system": "http://example.org/payer-ids",
+            "value": "PAYER001"
+          }
+        ],
+        "name": "Example Health Plan"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "org-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1999999992"
+          }
+        ],
+        "name": "Good Health Clinic"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:409e5292-6fab-5310-a399-c5f1b45818c5",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "prac-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1111111112"
+          }
+        ],
+        "name": [
+          {
+            "family": "Jones",
+            "given": [
+              "Pat"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+
+### P10 Update of P9 cancelling line 1 -> C, NA, A3
+POST {{base}}/fhir/Claim/$submit
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Bundle",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-pas-request-bundle"
+    ]
+  },
+  "identifier": {
+    "system": "http://example.org/provider/bundle-ids",
+    "value": "B-010"
+  },
+  "type": "collection",
+  "timestamp": "2026-09-24T10:05:00Z",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:e2298c03-a71c-5fd9-9afe-52e2abc9b038",
+      "resource": {
+        "resourceType": "Claim",
+        "id": "claim-1",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-claim"
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://example.org/provider/claim-ids",
+            "value": "PA-MULTI-009"
+          }
+        ],
+        "status": "active",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/claim-type",
+              "code": "professional"
+            }
+          ]
+        },
+        "use": "preauthorization",
+        "patient": {
+          "reference": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd"
+        },
+        "created": "2026-09-24T10:05:00Z",
+        "insurer": {
+          "reference": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1"
+        },
+        "provider": {
+          "reference": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c"
+        },
+        "priority": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/processpriority",
+              "code": "normal"
+            }
+          ]
+        },
+        "insurance": [
+          {
+            "sequence": 1,
+            "focal": true,
+            "coverage": {
+              "reference": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065"
+            }
+          }
+        ],
+        "item": [
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-itemTraceNumber",
+                "valueIdentifier": {
+                  "system": "http://example.org/provider/trace",
+                  "value": "PA-MULTI-009-1"
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-certificationType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1322",
+                      "code": "3"
+                    }
+                  ]
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-serviceItemRequestType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1525",
+                      "code": "HS",
+                      "display": "Health Services Review"
+                    }
+                  ]
+                }
+              }
+            ],
+            "sequence": 1,
+            "category": {
+              "coding": [
+                {
+                  "system": "https://codesystem.x12.org/005010/1365",
+                  "code": "4"
+                }
+              ]
+            },
+            "productOrService": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "72148"
+                }
+              ]
+            },
+            "quantity": {
+              "value": 1
+            },
+            "servicedDate": "2026-10-05",
+            "modifierExtension": [
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/modifierextension-infoCancelled",
+                "valueBoolean": true
+              }
+            ]
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-itemTraceNumber",
+                "valueIdentifier": {
+                  "system": "http://example.org/provider/trace",
+                  "value": "PA-MULTI-009-2"
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-certificationType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1322",
+                      "code": "I"
+                    }
+                  ]
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-serviceItemRequestType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1525",
+                      "code": "HS",
+                      "display": "Health Services Review"
+                    }
+                  ]
+                }
+              }
+            ],
+            "sequence": 2,
+            "category": {
+              "coding": [
+                {
+                  "system": "https://codesystem.x12.org/005010/1365",
+                  "code": "1"
+                }
+              ]
+            },
+            "productOrService": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "99213"
+                }
+              ]
+            },
+            "quantity": {
+              "value": 1
+            },
+            "servicedDate": "2026-10-05"
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-itemTraceNumber",
+                "valueIdentifier": {
+                  "system": "http://example.org/provider/trace",
+                  "value": "PA-MULTI-009-3"
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-certificationType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1322",
+                      "code": "I"
+                    }
+                  ]
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-serviceItemRequestType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1525",
+                      "code": "HS",
+                      "display": "Health Services Review"
+                    }
+                  ]
+                }
+              }
+            ],
+            "sequence": 3,
+            "category": {
+              "coding": [
+                {
+                  "system": "https://codesystem.x12.org/005010/1365",
+                  "code": "2"
+                }
+              ]
+            },
+            "productOrService": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "15780"
+                }
+              ]
+            },
+            "quantity": {
+              "value": 1
+            },
+            "servicedDate": "2026-10-05"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pat-1",
+        "identifier": [
+          {
+            "system": "http://example.org/member-ids",
+            "value": "MBR-1001"
+          }
+        ],
+        "name": [
+          {
+            "family": "Shaw",
+            "given": [
+              "Amy"
+            ]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1970-02-20"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "cov-1",
+        "status": "active",
+        "subscriberId": "MBR-1001",
+        "beneficiary": {
+          "reference": "Patient/pat-1"
+        },
+        "relationship": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+              "code": "self"
+            }
+          ]
+        },
+        "period": {
+          "start": "2026-01-01",
+          "end": "2026-12-31"
+        },
+        "payor": [
+          {
+            "identifier": {
+              "system": "http://example.org/payer-ids",
+              "value": "PAYER001"
+            },
+            "display": "Example Health Plan"
+          }
+        ],
+        "class": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                  "code": "plan"
+                }
+              ]
+            },
+            "value": "GOLD-PPO",
+            "name": "Gold PPO"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "payer-1",
+        "identifier": [
+          {
+            "system": "http://example.org/payer-ids",
+            "value": "PAYER001"
+          }
+        ],
+        "name": "Example Health Plan"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "org-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1999999992"
+          }
+        ],
+        "name": "Good Health Clinic"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:409e5292-6fab-5310-a399-c5f1b45818c5",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "prac-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1111111112"
+          }
+        ],
+        "name": [
+          {
+            "family": "Jones",
+            "given": [
+              "Pat"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+
+### P11 Broken request -> HTTP 400 with OperationOutcome
+POST {{base}}/fhir/Claim/$submit
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Bundle",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-pas-request-bundle"
+    ]
+  },
+  "identifier": {
+    "system": "http://example.org/provider/bundle-ids",
+    "value": "B-011"
+  },
+  "type": "transaction",
+  "timestamp": "2026-09-24T10:05:00Z",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:30f49a9f-e0de-53b2-a52c-e5d5e440d49f",
+      "resource": {
+        "resourceType": "Claim",
+        "id": "claim-1",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-claim"
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://example.org/provider/claim-ids",
+            "value": "PA-BAD-011"
+          }
+        ],
+        "status": "active",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/claim-type",
+              "code": "professional"
+            }
+          ]
+        },
+        "use": "claim",
+        "patient": {
+          "reference": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd"
+        },
+        "created": "2026-09-24T10:05:00Z",
+        "insurer": {
+          "reference": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1"
+        },
+        "provider": {
+          "reference": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c"
+        },
+        "insurance": [
+          {
+            "sequence": 1,
+            "focal": true,
+            "coverage": {
+              "reference": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065"
+            }
+          }
+        ],
+        "item": [
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-itemTraceNumber",
+                "valueIdentifier": {
+                  "system": "http://example.org/provider/trace",
+                  "value": "PA-BAD-011-1"
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-certificationType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1322",
+                      "code": "I"
+                    }
+                  ]
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-serviceItemRequestType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1525",
+                      "code": "HS",
+                      "display": "Health Services Review"
+                    }
+                  ]
+                }
+              }
+            ],
+            "sequence": 1,
+            "category": {
+              "coding": [
+                {
+                  "system": "https://codesystem.x12.org/005010/1365",
+                  "code": "4"
+                }
+              ]
+            },
+            "productOrService": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "72148"
+                }
+              ]
+            },
+            "quantity": {
+              "value": 1
+            },
+            "servicedDate": "2026-10-05"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pat-1",
+        "identifier": [
+          {
+            "system": "http://example.org/member-ids",
+            "value": "MBR-1001"
+          }
+        ],
+        "name": [
+          {
+            "family": "Shaw",
+            "given": [
+              "Amy"
+            ]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1970-02-20"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "cov-1",
+        "status": "active",
+        "subscriberId": "MBR-1001",
+        "beneficiary": {
+          "reference": "Patient/pat-1"
+        },
+        "relationship": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+              "code": "self"
+            }
+          ]
+        },
+        "period": {
+          "start": "2026-01-01",
+          "end": "2026-12-31"
+        },
+        "payor": [
+          {
+            "identifier": {
+              "system": "http://example.org/payer-ids",
+              "value": "PAYER001"
+            },
+            "display": "Example Health Plan"
+          }
+        ],
+        "class": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                  "code": "plan"
+                }
+              ]
+            },
+            "value": "GOLD-PPO",
+            "name": "Gold PPO"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "payer-1",
+        "identifier": [
+          {
+            "system": "http://example.org/payer-ids",
+            "value": "PAYER001"
+          }
+        ],
+        "name": "Example Health Plan"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "org-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1999999992"
+          }
+        ],
+        "name": "Good Health Clinic"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:409e5292-6fab-5310-a399-c5f1b45818c5",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "prac-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1111111112"
+          }
+        ],
+        "name": [
+          {
+            "family": "Jones",
+            "given": [
+              "Pat"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+
+### P13 Provider subscribes to notifications for pended requests -> 201
+POST {{base}}/fhir/Subscription
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Subscription",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-subscription"
+    ]
+  },
+  "status": "requested",
+  "reason": "Pended prior authorization results for Good Health Clinic",
+  "criteria": "http://hl7.org/fhir/us/davinci-pas/SubscriptionTopic/PASSubscriptionTopic",
+  "_criteria": {
+    "extension": [
+      {
+        "url": "http://hl7.org/fhir/uv/subscriptions-backport/StructureDefinition/backport-filter-criteria",
+        "valueString": "ClaimResponse?orgIdentifier=http://hl7.org/fhir/sid/us-npi|1999999992"
+      }
+    ]
+  },
+  "channel": {
+    "type": "rest-hook",
+    "endpoint": "https://ehr.example.org/pas-notifications",
+    "payload": "application/fhir+json",
+    "_payload": {
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/uv/subscriptions-backport/StructureDefinition/backport-payload-content",
+          "valueCode": "id-only"
+        }
+      ]
+    },
+    "header": [
+      "Authorization: Bearer provider-endpoint-secret"
+    ]
+  }
+}
+
+
+### =====================================================================
+### STEP 4: CDex - payer asks for a missing document, provider sends it
+### =====================================================================
+
+### P6 Knee without the X-ray report -> A4 pended + a Task is created
+POST {{base}}/fhir/Claim/$submit
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Bundle",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-pas-request-bundle"
+    ]
+  },
+  "identifier": {
+    "system": "http://example.org/provider/bundle-ids",
+    "value": "B-006"
+  },
+  "type": "collection",
+  "timestamp": "2026-09-24T10:05:00Z",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:f5b63ab7-31a5-51eb-a830-5dfa4afb1b3a",
+      "resource": {
+        "resourceType": "Claim",
+        "id": "claim-1",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-claim"
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://example.org/provider/claim-ids",
+            "value": "PA-KNEE-006"
+          }
+        ],
+        "status": "active",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/claim-type",
+              "code": "professional"
+            }
+          ]
+        },
+        "use": "preauthorization",
+        "patient": {
+          "reference": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd"
+        },
+        "created": "2026-09-24T10:05:00Z",
+        "insurer": {
+          "reference": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1"
+        },
+        "provider": {
+          "reference": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c"
+        },
+        "priority": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/processpriority",
+              "code": "stat"
+            }
+          ]
+        },
+        "insurance": [
+          {
+            "sequence": 1,
+            "focal": true,
+            "coverage": {
+              "reference": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065"
+            }
+          }
+        ],
+        "item": [
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-itemTraceNumber",
+                "valueIdentifier": {
+                  "system": "http://example.org/provider/trace",
+                  "value": "PA-KNEE-006-1"
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-certificationType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1322",
+                      "code": "I"
+                    }
+                  ]
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-serviceItemRequestType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1525",
+                      "code": "HS",
+                      "display": "Health Services Review"
+                    }
+                  ]
+                }
+              }
+            ],
+            "sequence": 1,
+            "category": {
+              "coding": [
+                {
+                  "system": "https://codesystem.x12.org/005010/1365",
+                  "code": "2"
+                }
+              ]
+            },
+            "productOrService": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "27447"
+                }
+              ]
+            },
+            "quantity": {
+              "value": 1
+            },
+            "servicedDate": "2026-11-02",
+            "locationCodeableConcept": {
+              "coding": [
+                {
+                  "system": "https://www.cms.gov/Medicare/Coding/place-of-service-codes/Place_of_Service_Code_Set",
+                  "code": "21"
+                }
+              ]
+            }
+          }
+        ],
+        "supportingInfo": [
+          {
+            "sequence": 1,
+            "category": {
+              "coding": [
+                {
+                  "system": "http://hl7.org/fhir/us/davinci-pas/CodeSystem/PASTempCodes",
+                  "code": "additionalInformation"
+                }
+              ]
+            },
+            "valueReference": {
+              "reference": "urn:uuid:72402493-f572-5d89-8bb8-451777296801"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pat-1",
+        "identifier": [
+          {
+            "system": "http://example.org/member-ids",
+            "value": "MBR-1001"
+          }
+        ],
+        "name": [
+          {
+            "family": "Shaw",
+            "given": [
+              "Amy"
+            ]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1970-02-20"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "cov-1",
+        "status": "active",
+        "subscriberId": "MBR-1001",
+        "beneficiary": {
+          "reference": "Patient/pat-1"
+        },
+        "relationship": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+              "code": "self"
+            }
+          ]
+        },
+        "period": {
+          "start": "2026-01-01",
+          "end": "2026-12-31"
+        },
+        "payor": [
+          {
+            "identifier": {
+              "system": "http://example.org/payer-ids",
+              "value": "PAYER001"
+            },
+            "display": "Example Health Plan"
+          }
+        ],
+        "class": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                  "code": "plan"
+                }
+              ]
+            },
+            "value": "GOLD-PPO",
+            "name": "Gold PPO"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "payer-1",
+        "identifier": [
+          {
+            "system": "http://example.org/payer-ids",
+            "value": "PAYER001"
+          }
+        ],
+        "name": "Example Health Plan"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "org-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1999999992"
+          }
+        ],
+        "name": "Good Health Clinic"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:409e5292-6fab-5310-a399-c5f1b45818c5",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "prac-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1111111112"
+          }
+        ],
+        "name": [
+          {
+            "family": "Jones",
+            "given": [
+              "Pat"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:72402493-f572-5d89-8bb8-451777296801",
+      "resource": {
+        "resourceType": "QuestionnaireResponse",
+        "id": "qr-knee",
+        "questionnaire": "http://example.org/fhir/Questionnaire/knee-arthroplasty-27447|1.0.0",
+        "status": "completed",
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "authored": "2026-09-24T10:00:00Z",
+        "item": [
+          {
+            "linkId": "clinical",
+            "item": [
+              {
+                "linkId": "conservative-therapy-weeks",
+                "answer": [
+                  {
+                    "valueInteger": 16,
+                    "extension": [
+                      {
+                        "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                        "extension": [
+                          {
+                            "url": "source",
+                            "valueCode": "auto"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "linkId": "kl-grade",
+                "answer": [
+                  {
+                    "valueInteger": 4,
+                    "extension": [
+                      {
+                        "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                        "extension": [
+                          {
+                            "url": "source",
+                            "valueCode": "manual"
+                          },
+                          {
+                            "url": "author",
+                            "extension": [
+                              {
+                                "url": "practitioner",
+                                "valueReference": {
+                                  "reference": "Practitioner/prac-1"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "linkId": "bmi",
+                "answer": [
+                  {
+                    "valueDecimal": 31.2,
+                    "extension": [
+                      {
+                        "url": "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/information-origin",
+                        "extension": [
+                          {
+                            "url": "source",
+                            "valueCode": "auto"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "linkId": "admin",
+            "item": [
+              {
+                "linkId": "admission-type",
+                "answer": [
+                  {
+                    "valueCoding": {
+                      "system": "https://www.cms.gov/Medicare/Coding/place-of-service-codes/Place_of_Service_Code_Set",
+                      "code": "21",
+                      "display": "Inpatient Hospital"
+                    }
+                  }
+                ]
+              },
+              {
+                "linkId": "planned-date",
+                "answer": [
+                  {
+                    "valueDate": "2026-11-02"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+
+### See the Task: COPY identifier[0].value (starts with TRK-)
+GET {{base}}/fhir/Task?status=requested
+
+### Provider sends the X-ray report: PASTE the TRK- value in place of PASTE-TRACKING-ID
+POST {{base}}/fhir/$submit-attachment
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    { "name": "TrackingId", "valueIdentifier": { "system": "http://example.org/cdex/tracking-ids", "value": "PASTE-TRACKING-ID" } },
+    { "name": "AttachTo", "valueCode": "preauthorization" },
+    { "name": "ProviderId", "valueIdentifier": { "system": "http://hl7.org/fhir/sid/us-npi", "value": "1111111112" } },
+    { "name": "MemberId", "valueIdentifier": { "system": "http://example.org/member-ids", "value": "MBR-1001" } },
+    { "name": "Attachment", "part": [
+        { "name": "LineItem", "valueString": "1" },
+        { "name": "Code", "valueCodeableConcept": { "coding": [ { "system": "http://loinc.org", "code": "18748-4" } ] } },
+        { "name": "Content", "resource": {
+            "resourceType": "DocumentReference", "status": "current",
+            "type": { "coding": [ { "system": "http://loinc.org", "code": "18748-4" } ] },
+            "content": [ { "attachment": { "contentType": "text/plain", "data": "S25lZSBYLXJheTogS0wgZ3JhZGUgNA==" } } ] } }
+    ] }
+  ]
+}
+
+### Ask for the result -> now A1 approved
+POST {{base}}/fhir/Claim/$inquire
+Content-Type: application/fhir+json
+
+{
+  "resourceType": "Bundle",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-pas-inquiry-request-bundle"
+    ]
+  },
+  "identifier": {
+    "system": "http://example.org/provider/bundle-ids",
+    "value": "B-INQ-1"
+  },
+  "type": "collection",
+  "timestamp": "2026-09-24T10:05:00Z",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:f5b63ab7-31a5-51eb-a830-5dfa4afb1b3a",
+      "resource": {
+        "resourceType": "Claim",
+        "id": "claim-1",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/profile-claim-inquiry"
+          ]
+        },
+        "identifier": [
+          {
+            "system": "http://example.org/provider/claim-ids",
+            "value": "PA-KNEE-006"
+          }
+        ],
+        "status": "active",
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/claim-type",
+              "code": "professional"
+            }
+          ]
+        },
+        "use": "preauthorization",
+        "patient": {
+          "reference": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd"
+        },
+        "created": "2026-09-24T10:05:00Z",
+        "insurer": {
+          "reference": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1"
+        },
+        "provider": {
+          "reference": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c"
+        },
+        "priority": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/processpriority",
+              "code": "normal"
+            }
+          ]
+        },
+        "insurance": [
+          {
+            "sequence": 1,
+            "focal": true,
+            "coverage": {
+              "reference": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065"
+            }
+          }
+        ],
+        "item": [
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-itemTraceNumber",
+                "valueIdentifier": {
+                  "system": "http://example.org/provider/trace",
+                  "value": "PA-KNEE-006-1"
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-certificationType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1322",
+                      "code": "I"
+                    }
+                  ]
+                }
+              },
+              {
+                "url": "http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-serviceItemRequestType",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "https://codesystem.x12.org/005010/1525",
+                      "code": "HS",
+                      "display": "Health Services Review"
+                    }
+                  ]
+                }
+              }
+            ],
+            "sequence": 1,
+            "category": {
+              "coding": [
+                {
+                  "system": "https://codesystem.x12.org/005010/1365",
+                  "code": "2"
+                }
+              ]
+            },
+            "productOrService": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "27447"
+                }
+              ]
+            },
+            "quantity": {
+              "value": 1
+            },
+            "servicedDate": "2026-11-02",
+            "locationCodeableConcept": {
+              "coding": [
+                {
+                  "system": "https://www.cms.gov/Medicare/Coding/place-of-service-codes/Place_of_Service_Code_Set",
+                  "code": "21"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:7bb0c8c4-09ae-515f-87b2-ea2aff6398fd",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pat-1",
+        "identifier": [
+          {
+            "system": "http://example.org/member-ids",
+            "value": "MBR-1001"
+          }
+        ],
+        "name": [
+          {
+            "family": "Shaw",
+            "given": [
+              "Amy"
+            ]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1970-02-20"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:5832777f-c211-5935-8b9b-41a5e81ed065",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "cov-1",
+        "status": "active",
+        "subscriberId": "MBR-1001",
+        "beneficiary": {
+          "reference": "Patient/pat-1"
+        },
+        "relationship": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+              "code": "self"
+            }
+          ]
+        },
+        "period": {
+          "start": "2026-01-01",
+          "end": "2026-12-31"
+        },
+        "payor": [
+          {
+            "identifier": {
+              "system": "http://example.org/payer-ids",
+              "value": "PAYER001"
+            },
+            "display": "Example Health Plan"
+          }
+        ],
+        "class": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                  "code": "plan"
+                }
+              ]
+            },
+            "value": "GOLD-PPO",
+            "name": "Gold PPO"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:afc3e92e-e810-5b39-83db-6d0ef3ac9bf1",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "payer-1",
+        "identifier": [
+          {
+            "system": "http://example.org/payer-ids",
+            "value": "PAYER001"
+          }
+        ],
+        "name": "Example Health Plan"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:81753afe-75e2-53d7-b209-49190b34c15c",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "org-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1999999992"
+          }
+        ],
+        "name": "Good Health Clinic"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:409e5292-6fab-5310-a399-c5f1b45818c5",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "prac-1",
+        "identifier": [
+          {
+            "system": "http://hl7.org/fhir/sid/us-npi",
+            "value": "1111111112"
+          }
+        ],
+        "name": [
+          {
+            "family": "Jones",
+            "given": [
+              "Pat"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

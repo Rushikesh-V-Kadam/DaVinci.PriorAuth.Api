@@ -1,0 +1,29 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "home-dialysis-adaptive",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/dtr-questionnaire-adapt-search"
+    ]
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/cqf-library",
+      "valueCanonical": "http://example.org/fhir/Library/DialysisPrepopulation|1.0.0"
+    },
+    {
+      "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-questionnaireAdaptive",
+      "valueBoolean": true
+    }
+  ],
+  "url": "http://example.org/fhir/Questionnaire/home-dialysis-adaptive",
+  "version": "1.0.0",
+  "name": "home_dialysis_adaptive",
+  "title": "Home Dialysis (CPT 90945 / 90999) - Adaptive Documentation",
+  "status": "active",
+  "subjectType": [
+    "Patient"
+  ],
+  "date": "2026-01-01",
+  "publisher": "Example Health Plan"
+}

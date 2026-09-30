@@ -1,0 +1,56 @@
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "coverage",
+      "resource": {
+        "resourceType": "Coverage",
+        "id": "cov-1",
+        "status": "active",
+        "subscriberId": "MBR-1001",
+        "beneficiary": {
+          "reference": "Patient/pat-1"
+        },
+        "relationship": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/subscriber-relationship",
+              "code": "self"
+            }
+          ]
+        },
+        "period": {
+          "start": "2026-01-01",
+          "end": "2026-12-31"
+        },
+        "payor": [
+          {
+            "identifier": {
+              "system": "http://example.org/payer-ids",
+              "value": "PAYER001"
+            },
+            "display": "Example Health Plan"
+          }
+        ],
+        "class": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/coverage-class",
+                  "code": "plan"
+                }
+              ]
+            },
+            "value": "GOLD-PPO",
+            "name": "Gold PPO"
+          }
+        ]
+      }
+    },
+    {
+      "name": "context",
+      "valueString": "{{coverage-assertion-id from the CRD response}}"
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "cpap-e0601",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/dtr-std-questionnaire"
+    ]
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/cqf-library",
+      "valueCanonical": "http://example.org/fhir/Library/CpapPrepopulation|1.0.0"
+    }
+  ],
+  "url": "http://example.org/fhir/Questionnaire/cpap-e0601",
+  "version": "1.0.0",
+  "name": "cpap_e0601",
+  "title": "CPAP (E0601) - Prior Authorization Documentation",
+  "status": "active",
+  "subjectType": [
+    "Patient"
+  ],
+  "date": "2026-01-01",
+  "publisher": "Example Health Plan",
+  "item": [
+    {
+      "linkId": "sleep-study",
+      "text": "Sleep study",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "sleep-study-date",
+          "text": "Date of the diagnostic sleep study",
+          "type": "date",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"CpapPrepopulation\".SleepStudyDate"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "ahi",
+          "text": "Apnea-Hypopnea Index (AHI), events per hour",
+          "type": "decimal",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"CpapPrepopulation\".AHI"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "face-to-face",
+      "text": "Face-to-face clinical evaluation within 6 months before the sleep study?",
+      "type": "boolean",
+      "required": true,
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+          "valueExpression": {
+            "language": "text/cql",
+            "expression": "\"CpapPrepopulation\".HasRecentFaceToFace"
+          }
+        }
+      ]
+    },
+    {
+      "linkId": "daytime-sleepiness",
+      "text": "Excessive daytime sleepiness documented?",
+      "type": "boolean",
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+          "valueExpression": {
+            "language": "text/cql",
+            "expression": "\"CpapPrepopulation\".HasDaytimeSleepiness"
+          }
+        }
+      ]
+    },
+    {
+      "linkId": "attestation",
+      "text": "I attest that the information above is accurate and supported by the medical record.",
+      "type": "boolean",
+      "required": true
+    }
+  ]
+}

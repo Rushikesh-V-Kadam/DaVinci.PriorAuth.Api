@@ -1,0 +1,64 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "home-o2-adaptive-template",
+  "url": "http://example.org/fhir/Questionnaire/home-o2-adaptive",
+  "version": "1.0.0",
+  "name": "HomeO2AdaptiveTemplate",
+  "title": "Home Oxygen - adaptive question logic (payer internal)",
+  "status": "active",
+  "item": [
+    {
+      "linkId": "spo2",
+      "text": "Resting oxygen saturation (SpO2 %) on room air",
+      "type": "decimal",
+      "required": true,
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+          "valueExpression": {
+            "language": "text/cql",
+            "expression": "\"HomeO2Prepopulation\".LatestSpO2"
+          }
+        }
+      ]
+    },
+    {
+      "linkId": "exercise-test",
+      "text": "Was an exercise oximetry test performed?",
+      "type": "boolean",
+      "required": true,
+      "enableWhen": [
+        {
+          "question": "spo2",
+          "operator": ">",
+          "answerDecimal": 88
+        }
+      ]
+    },
+    {
+      "linkId": "exercise-spo2",
+      "text": "Lowest SpO2 % during exercise",
+      "type": "decimal",
+      "required": true,
+      "enableWhen": [
+        {
+          "question": "exercise-test",
+          "operator": "=",
+          "answerBoolean": true
+        }
+      ]
+    },
+    {
+      "linkId": "qualifying-test-date",
+      "text": "Date of the qualifying oxygen test",
+      "type": "date",
+      "required": true
+    },
+    {
+      "linkId": "attestation",
+      "text": "I attest that the information above is accurate and supported by the medical record.",
+      "type": "boolean",
+      "required": true
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "hook": "order-sign",
+  "hookInstance": "00000000-0000-0000-0000-000000000204",
+  "fhirServer": "https://ehr.example.org/fhir",
+  "context": {
+    "userId": "Practitioner/prac-1",
+    "patientId": "pat-1",
+    "encounterId": "enc-1",
+    "draftOrders": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "ServiceRequest",
+            "id": "sr-72148",
+            "status": "draft",
+            "intent": "order",
+            "code": {
+              "coding": [
+                {
+                  "system": "http://www.ama-assn.org/go/cpt",
+                  "code": "72148"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "Patient/pat-1"
+            },
+            "authoredOn": "2026-09-24",
+            "requester": {
+              "reference": "Practitioner/prac-1"
+            },
+            "insurance": [
+              {
+                "reference": "Coverage/cov-1"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "prefetch": {
+    "patient": {
+      "resourceType": "Patient",
+      "id": "pat-1",
+      "identifier": [
+        {
+          "system": "http://example.org/member-ids",
+          "value": "MBR-1001"
+        }
+      ],
+      "name": [
+        {
+          "family": "Shaw",
+          "given": [
+            "Amy"
+          ]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1970-02-20"
+    },
+    "coverage": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": []
+    },
+    "practitioner": {
+      "resourceType": "Bundle",
+      "type": "collection",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Practitioner",
+            "id": "prac-1",
+            "identifier": [
+              {
+                "system": "http://hl7.org/fhir/sid/us-npi",
+                "value": "1111111112"
+              }
+            ],
+            "name": [
+              {
+                "family": "Jones",
+                "given": [
+                  "Pat"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "extension": {
+    "davinci-crd.configuration": {
+      "coverage-info": true,
+      "max-cards": 10
+    }
+  }
+}

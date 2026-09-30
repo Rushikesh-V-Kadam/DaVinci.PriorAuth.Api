@@ -1,0 +1,364 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "dialysis-incenter-hd",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/dtr-std-questionnaire"
+    ]
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/cqf-library",
+      "valueCanonical": "http://example.org/fhir/Library/DialysisPrepopulation|1.0.0"
+    }
+  ],
+  "url": "http://example.org/fhir/Questionnaire/dialysis-incenter-hd",
+  "version": "1.0.0",
+  "name": "dialysis_incenter_hd",
+  "title": "Outpatient In-Center Hemodialysis (CPT 90935) - Prior Authorization Documentation",
+  "status": "active",
+  "subjectType": [
+    "Patient"
+  ],
+  "date": "2026-01-01",
+  "publisher": "Example Health Plan",
+  "item": [
+    {
+      "linkId": "diagnosis",
+      "text": "Diagnosis and kidney function",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "primary-diagnosis",
+          "text": "Primary diagnosis requiring dialysis",
+          "type": "choice",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".PrimaryDiagnosisCode"
+              }
+            }
+          ],
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://hl7.org/fhir/sid/icd-10-cm",
+                "code": "N18.6",
+                "display": "End stage renal disease"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://hl7.org/fhir/sid/icd-10-cm",
+                "code": "N18.5",
+                "display": "Chronic kidney disease, stage 5"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://hl7.org/fhir/sid/icd-10-cm",
+                "code": "N17.9",
+                "display": "Acute kidney failure, unspecified (dialysis dependent)"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "esrd-date",
+          "text": "Date of ESRD diagnosis or first regular dialysis",
+          "type": "date",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".EsrdOnsetDate"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "egfr",
+          "text": "Most recent eGFR (mL/min/1.73 m2)",
+          "type": "decimal",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".LatestEgfr"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "egfr-date",
+          "text": "Date of the most recent eGFR",
+          "type": "date",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".LatestEgfrDate"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "creatinine",
+          "text": "Most recent serum creatinine (mg/dL)",
+          "type": "decimal",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".LatestCreatinine"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "diabetes",
+          "text": "Diabetes mellitus present?",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "linkId": "treatment",
+      "text": "Dialysis treatment plan",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "treatments-per-week",
+          "text": "Prescribed treatments per week",
+          "type": "integer",
+          "required": true,
+          "initial": [
+            {
+              "valueInteger": 3
+            }
+          ]
+        },
+        {
+          "linkId": "session-hours",
+          "text": "Prescribed treatment time per session (hours)",
+          "type": "decimal",
+          "required": true,
+          "initial": [
+            {
+              "valueDecimal": 4
+            }
+          ]
+        },
+        {
+          "linkId": "vascular-access",
+          "text": "Current vascular access",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "avf",
+                "display": "Arteriovenous fistula (AVF)"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "avg",
+                "display": "Arteriovenous graft (AVG)"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "cvc",
+                "display": "Central venous catheter (CVC)"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "cvc-plan",
+          "text": "Plan and target date to replace the catheter with a permanent access (AVF/AVG)",
+          "type": "string",
+          "required": true,
+          "enableWhen": [
+            {
+              "question": "vascular-access",
+              "operator": "=",
+              "answerCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "cvc"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "facility",
+          "text": "Dialysis facility name and CMS Certification Number (CCN)",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "linkId": "adequacy",
+      "text": "Dialysis adequacy and labs (last 30 days)",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "new-start",
+          "text": "Is this a new dialysis start (first 90 days of dialysis)?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "ktv",
+          "text": "Most recent single-pool Kt/V",
+          "type": "decimal",
+          "required": true,
+          "enableWhen": [
+            {
+              "question": "new-start",
+              "operator": "=",
+              "answerBoolean": false
+            }
+          ]
+        },
+        {
+          "linkId": "urr",
+          "text": "Most recent urea reduction ratio - URR (%)",
+          "type": "decimal",
+          "enableWhen": [
+            {
+              "question": "new-start",
+              "operator": "=",
+              "answerBoolean": false
+            }
+          ]
+        },
+        {
+          "linkId": "hemoglobin",
+          "text": "Most recent hemoglobin (g/dL)",
+          "type": "decimal",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".LatestHemoglobin"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "albumin",
+          "text": "Most recent serum albumin (g/dL)",
+          "type": "decimal",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".LatestAlbumin"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "administrative",
+      "text": "Administrative",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "cms-2728",
+          "text": "CMS-2728 ESRD Medical Evidence Report completed and signed?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "medicare-status",
+          "text": "Medicare ESRD entitlement status",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "not-applied",
+                "display": "Not applied"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "applied",
+                "display": "Applied - decision pending"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "entitled",
+                "display": "Entitled to Medicare based on ESRD"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "cob-start-date",
+          "text": "Start date of the 30-month coordination of benefits period",
+          "type": "date",
+          "required": true,
+          "enableWhen": [
+            {
+              "question": "medicare-status",
+              "operator": "=",
+              "answerCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "entitled"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "transplant-referral",
+          "text": "Has the patient been referred or evaluated for a kidney transplant?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "transplant-reason",
+          "text": "If not referred, give the reason",
+          "type": "string",
+          "enableWhen": [
+            {
+              "question": "transplant-referral",
+              "operator": "=",
+              "answerBoolean": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "attestation",
+      "text": "I attest that the information above is accurate and supported by the medical record.",
+      "type": "boolean",
+      "required": true
+    }
+  ]
+}

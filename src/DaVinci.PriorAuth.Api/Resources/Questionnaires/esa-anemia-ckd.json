@@ -1,0 +1,239 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "esa-anemia-ckd",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/davinci-dtr/StructureDefinition/dtr-std-questionnaire"
+    ]
+  },
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/cqf-library",
+      "valueCanonical": "http://example.org/fhir/Library/DialysisPrepopulation|1.0.0"
+    }
+  ],
+  "url": "http://example.org/fhir/Questionnaire/esa-anemia-ckd",
+  "version": "1.0.0",
+  "name": "esa_anemia_ckd",
+  "title": "ESA for Anemia of CKD on Dialysis - Prior Authorization Documentation",
+  "status": "active",
+  "subjectType": [
+    "Patient"
+  ],
+  "date": "2026-01-01",
+  "publisher": "Example Health Plan",
+  "item": [
+    {
+      "linkId": "request",
+      "text": "Request",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "esa-drug",
+          "text": "Erythropoiesis-stimulating agent (ESA) requested",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "https://bluebutton.cms.gov/resources/codesystem/hcpcs",
+                "code": "Q5105",
+                "display": "Retacrit (epoetin alfa-epbx), 100 units (ESRD on dialysis)"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "https://bluebutton.cms.gov/resources/codesystem/hcpcs",
+                "code": "J0882",
+                "display": "Aranesp (darbepoetin alfa), 1 mcg (ESRD on dialysis)"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "https://bluebutton.cms.gov/resources/codesystem/hcpcs",
+                "code": "J0887",
+                "display": "Mircera (methoxy polyethylene glycol-epoetin beta), 1 mcg (ESRD on dialysis)"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "https://bluebutton.cms.gov/resources/codesystem/hcpcs",
+                "code": "Q4081",
+                "display": "Epoetin alfa, 100 units (ESRD on dialysis)"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "request-type",
+          "text": "Type of request",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "initial",
+                "display": "Initial therapy"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "continuation",
+                "display": "Continuation of therapy"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "dose",
+          "text": "Dose, route and frequency",
+          "type": "string",
+          "required": true
+        },
+        {
+          "linkId": "anemia-diagnosis",
+          "text": "Anemia diagnosis",
+          "type": "choice",
+          "required": true,
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://hl7.org/fhir/sid/icd-10-cm",
+                "code": "D63.1",
+                "display": "Anemia in chronic kidney disease"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://hl7.org/fhir/sid/icd-10-cm",
+                "code": "D64.9",
+                "display": "Anemia, unspecified"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "labs",
+      "text": "Laboratory values (within the last 30 days)",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "hemoglobin",
+          "text": "Hemoglobin (g/dL)",
+          "type": "decimal",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".LatestHemoglobin"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "hemoglobin-date",
+          "text": "Date of the hemoglobin result",
+          "type": "date",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".LatestHemoglobinDate"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "ferritin",
+          "text": "Serum ferritin (ng/mL)",
+          "type": "decimal",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".LatestFerritin"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "tsat",
+          "text": "Transferrin saturation - TSAT (%)",
+          "type": "decimal",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/cql",
+                "expression": "\"DialysisPrepopulation\".LatestTsat"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "hb-response",
+          "text": "On therapy, has hemoglobin risen at least 1 g/dL or stayed within the 10-11 g/dL target?",
+          "type": "boolean",
+          "required": true,
+          "enableWhen": [
+            {
+              "question": "request-type",
+              "operator": "=",
+              "answerCoding": {
+                "system": "http://example.org/fhir/CodeSystem/dialysis-answers",
+                "code": "continuation"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "clinical",
+      "text": "Clinical review",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "iron-plan",
+          "text": "Iron status reviewed and iron given when needed?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "other-causes",
+          "text": "Other causes of anemia (bleeding, B12/folate deficiency, hemolysis) ruled out?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "uncontrolled-htn",
+          "text": "Does the patient have uncontrolled hypertension?",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "linkId": "malignancy",
+          "text": "Does the patient have an active malignancy?",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "linkId": "attestation",
+      "text": "I attest that the information above is accurate and supported by the medical record.",
+      "type": "boolean",
+      "required": true
+    }
+  ]
+}
