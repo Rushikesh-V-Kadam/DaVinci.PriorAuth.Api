@@ -125,7 +125,8 @@ public class ClaimResponseItem : BackboneElement
     public List<ClaimResponseAdjudication> Adjudication { get; set; } = new();
 }
 
-public class ClaimResponseAdjudication
+/// <summary>ClaimResponse.item.adjudication. PAS 2.0.1 puts the reviewAction extension (the line decision) here.</summary>
+public class ClaimResponseAdjudication : BackboneElement
 {
     public CodeableConcept Category { get; set; } = new();
     public CodeableConcept? Reason { get; set; }

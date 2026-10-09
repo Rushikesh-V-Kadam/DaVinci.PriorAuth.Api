@@ -48,17 +48,24 @@ public static class FhirRequest
 
     /// <summary>
     /// FHIR operations with a single resource input can be called with that resource as the body,
-    /// or with a Parameters resource. This accepts both.
+    /// or with a Parameters resource. This accepts both. Several parameter names can be given
+    /// (the first one that is present is used), for operations whose input name differs between versions.
     /// </summary>
-    public static async Task<(T? Resource, ContentResult? Error)> ReadOperationInputAsync<T>(HttpRequest request, string parameterName)
+    public static async Task<(T? Resource, ContentResult? Error)> ReadOperationInputAsync<T>(HttpRequest request, params string[] parameterNames)
         where T : Resource
     {
         var (resource, error) = await ReadAsync<Resource>(request);
         if (error != null) return (null, error);
         if (resource is T typed) return (typed, null);
-        if (resource is Parameters p && p.GetSingle(parameterName)?.Resource is T inner) return (inner, null);
+        if (resource is Parameters p)
+        {
+            foreach (var parameterName in parameterNames)
+            {
+                if (p.GetSingle(parameterName)?.Resource is T inner) return (inner, null);
+            }
+        }
         return (null, FhirResults.Error(400, IssueType.Invalid,
-            $"Body must be a {typeof(T).Name} or a Parameters resource with a '{parameterName}' parameter."));
+            $"Body must be a {typeof(T).Name} or a Parameters resource with a '{string.Join("' or '", parameterNames)}' parameter."));
     }
 }
 

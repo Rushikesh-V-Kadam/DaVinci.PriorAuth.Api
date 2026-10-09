@@ -40,8 +40,9 @@ public class DtrController : ControllerBase
     [HttpPost("Questionnaire/$next-question")]
     public async Task<IActionResult> NextQuestion()
     {
-        // SDC: input parameter "in" (QuestionnaireResponse), output "return"
-        var (qr, error) = await FhirRequest.ReadOperationInputAsync<QuestionnaireResponse>(Request, "in");
+        // SDC: input parameter "questionnaire-response" (QuestionnaireResponse), output "return".
+        // "in" is still accepted for clients written against the earlier name.
+        var (qr, error) = await FhirRequest.ReadOperationInputAsync<QuestionnaireResponse>(Request, "questionnaire-response", "in");
         if (error != null) return error;
         var result = _adaptive.NextQuestion(qr!, out var outcome);
         return outcome != null ? FhirResults.Fhir(outcome, 400) : FhirResults.Fhir(result);

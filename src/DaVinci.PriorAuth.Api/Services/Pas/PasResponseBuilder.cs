@@ -97,8 +97,6 @@ public class PasResponseBuilder : IPasResponseBuilder
                 foreach (var trace in claimItem.Extension.GetAllByUrl(PasExtensionUrls.ItemTraceNumber))
                     responseItem.Extension.Add(trace);
 
-            responseItem.Extension.Add(ReviewAction(item));
-
             if (item.AuthorizedPeriod != null)
             {
                 responseItem.Extension.Add(Extension.Date(PasExtensionUrls.ItemPreAuthIssueDate, FhirDate.Today()));
@@ -111,12 +109,15 @@ public class PasResponseBuilder : IPasResponseBuilder
                     new Extension("quantity") { ValueQuantity = new Quantity { Value = item.AuthorizedQuantity } }));
             }
 
-            // PAS requires at least one adjudication with category "submitted"
-            responseItem.Adjudication.Add(new ClaimResponseAdjudication
+            // PAS requires at least one adjudication with category "submitted".
+            // PAS 2.0.1: the line decision (reviewAction) is an extension of that adjudication, not of the item.
+            var adjudication = new ClaimResponseAdjudication
             {
                 Category = new CodeableConcept(CodeSystems.Adjudication, "submitted"),
                 Value = item.RequestedQuantity
-            });
+            };
+            adjudication.Extension.Add(ReviewAction(item));
+            responseItem.Adjudication.Add(adjudication);
             cr.Item.Add(responseItem);
         }
 
