@@ -208,6 +208,16 @@ public static class SeedData
             Description = "Arteriovenous fistula creation (direct anastomosis)", Covered = CoveredCodes.Covered,
             PaNeeded = PaNeededCodes.AuthNeeded, AllowedQuantity = 1, X12ServiceType = X12ServiceTypes.Surgical },
 
+        // D6: AV graft creation (nonautogenous) - PA required, no documentation (CRD -> PAS)
+        new CoverageRule { RuleId = "R-36830", CodeSystem = CodeSystems.Cpt, Code = "36830",
+            Description = "Arteriovenous graft creation (nonautogenous graft)", Covered = CoveredCodes.Covered,
+            PaNeeded = PaNeededCodes.AuthNeeded, AllowedQuantity = 1, X12ServiceType = X12ServiceTypes.Surgical },
+
+        // D7: tunneled peritoneal dialysis catheter insertion - PA required, no documentation (CRD -> PAS)
+        new CoverageRule { RuleId = "R-49421", CodeSystem = CodeSystems.Cpt, Code = "49421",
+            Description = "Tunneled intraperitoneal catheter insertion for dialysis", Covered = CoveredCodes.Covered,
+            PaNeeded = PaNeededCodes.AuthNeeded, AllowedQuantity = 1, X12ServiceType = X12ServiceTypes.Surgical },
+
         // ================================================================ codes of the dialysis authorization request form
 
         // AKI dialysis at an ESRD facility (patient without ESRD) - PA + AKI questionnaire; re-reviewed every month
